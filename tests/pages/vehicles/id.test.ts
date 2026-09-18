@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { allStubs } from '../../helpers/nuxt-stubs'
-import { makeMaintenanceVehicle, makeCarInsCandidate, makeMaintenanceRecord, makeMaintenanceCategory } from '../../helpers/test-data'
+import { makeMaintenanceVehicle, makeCarinsCandidate, makeMaintenanceRecord, makeMaintenanceCategory } from '../../helpers/test-data'
 
 const pushMock = vi.fn()
 const getVehicleMock = vi.fn()
@@ -36,8 +36,8 @@ vi.mock('~/utils/api', async (importOriginal) => {
 import VehicleDetailPage from '~/pages/vehicles/[id].vue'
 
 const unlinked = makeMaintenanceVehicle({ id: 'vehicle-1' })
-const linked = makeMaintenanceVehicle({ id: 'vehicle-1', car_id: 'car-1', cert_no: 'CERT-1', car_inspection_expiry: '2027-01-01' })
-const candidate = makeCarInsCandidate()
+const linked = makeMaintenanceVehicle({ id: 'vehicle-1', car_id: 'car-1', carins_linked_at: '2026-02-03T09:00:00Z' })
+const candidate = makeCarinsCandidate()
 const category = makeMaintenanceCategory()
 const record = makeMaintenanceRecord()
 
@@ -73,15 +73,17 @@ describe('vehicles/[id] page (詳細・編集 + 車検証紐づけ)', () => {
     expect(wrapper.text()).toContain(candidate.cert_no)
   })
 
-  it('shows 紐づけ済み state with cert_no and expiry, and can unlink', async () => {
+  it('shows 紐づけ済み state with car_id and 紐づけ日, and can unlink', async () => {
     getVehicleMock.mockResolvedValue(linked)
     unlinkCarInsMock.mockResolvedValue(undefined)
     const wrapper = mount(VehicleDetailPage, { global: { stubs: allStubs } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('紐づけ済み')
-    expect(wrapper.text()).toContain('CERT-1')
-    expect(wrapper.text()).toContain('2027-01-01')
+    // 出せるのは car_id と carins_linked_at だけ — MaintenanceVehicle は
+    // 車検証番号も車検満了日も保持していない。
+    expect(wrapper.text()).toContain('car-1')
+    expect(wrapper.text()).toContain('2026-02-03')
 
     const unlinkBtn = wrapper.findAll('button').find(b => b.text() === '紐づけを解除')!
     await unlinkBtn.trigger('click')

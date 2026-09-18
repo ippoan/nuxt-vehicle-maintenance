@@ -1,197 +1,168 @@
 /**
- * ★ TODO(#c651-2 マージ後): ts-rs 生成型へ差し替える。
+ * backend (rust-alc-api の `alc-maintenance` crate) の ts-rs 生成型が正本。
+ * 生成物は `app/types/generated/` に commit してある — 取得は
+ * `./scripts/sync-ts-bindings.sh <SHA>`。
  *
- * backend (rust-alc-api の `alc-maintenance` crate) は ts-rs で型を出力し、
- * `app/types/generated/` に同期する運用 (nuxt-trouble と同型)。
- * #c651-2 (alc-maintenance crate 本体) がまだマージされていないため、
- * このファイルは backend の API 契約 (issue #651 本文) を元にした手書きの
- * 型で暫定している。マージ後は:
+ * ★ 渡す SHA に罠がある。artifact 名は `ts-bindings-<SHA>` だが、この <SHA> は
+ * **PR の head SHA ではない** — pull_request イベントの `GITHUB_SHA`、つまり
+ * **merge commit の SHA** が使われる。PR の head SHA を渡すと
+ * `Artifact 'ts-bindings-<sha>' not found` で落ちる。確実なのは
+ * `gh api "repos/ippoan/rust-alc-api/actions/artifacts?per_page=100"` で
+ * `ts-bindings-` から始まる artifact を実際に一覧し、その名前を渡すこと。
  *
- *   1. `app/types/generated/` に生成型を配置
- *   2. このファイルの手書き型を `export * from './generated'` 相当へ差し替え
- *   3. 特に MaintenanceVehicle.car_id / cert_no / car_inspection_expiry の
- *      実際のフィールド名・null 許容が生成型と一致するか確認する
- *      (紐づけ状態の表現が backend 側で変わっている可能性がある)
+ * ★ `main` への push では artifact が出ない: ts-rs の `export_bindings_*` を
+ * 走らせる `test-lib` job が main push では動かないため (ci.yml:88)。
+ * pull_request の run か、タグ (`v*`) への push の run を使う。
  *
- * ★ 現状 (#c651-8 時点): records / categories (#654 / #656) は backend
- * マージ済みで、下記の `MaintenanceRecord*` / `MaintenanceCategory*` は
- * `crates/alc-maintenance/src/models.rs` の実物を見て手書きした型 (フィールド名・
- * 型は実物と一致させてある)。写真添付 (files, #651 の一部) がまだマージされて
- * いないため、生成型への移行はそちらのマージ後にまとめて行う。
+ * ★ CI で毎回生成する方式は採らない。backend の artifact 取得が CI 経路に増え、
+ * backend の CI 失敗がこちらの CI を巻き込むため。
+ *
+ * このファイルには次の 2 種類だけを置く:
+ *
+ *   1. そのまま使える生成型の re-export
+ *   2. 生成型をそのまま使えないときの override (理由をコメントで明記する)
+ *      — ts-rs には 2 つの既知のズレがあり、nuxt-trouble も同じ形で潰している:
+ *        (a) `Option<T>` が `T | null` の**必須キー**になる。リクエスト body は
+ *            キーごと省略できるのが実際の契約なので `?:` へ緩める
+ *        (b) `i64` が `bigint` になる。JSON を `res.json()` したものは実際には
+ *            JS の `number` なので、`bigint` の方が実物と食い違う
  */
 
-/** 車両本体 (整備記録の対象)。車検証への紐づけは任意 (carins が無いテナントでも使える設計)。 */
-export interface MaintenanceVehicle {
-  id: string
-  tenant_id: string
-  /** 登録番号 (ナンバープレート表記)。唯一必須の識別子。 */
-  registration_number: string
-  /** 社内車番など、テナント内での呼び名。任意。 */
-  display_name: string | null
-  note: string | null
-  /** 紐づいている車検証の car_id。未紐づけなら null。 */
-  car_id: string | null
-  /** 紐づいている車検証の証明書番号。未紐づけなら null。 */
-  cert_no: string | null
-  /** 車検満了日 (YYYY-MM-DD)。紐づけ済みのときのみ値が入る。 */
-  car_inspection_expiry: string | null
-  created_at: string
-  updated_at: string
-}
+// --- そのまま使える生成型 ---
+export type {
+  MaintenanceVehicle,
+  CarinsCandidate,
+  MaintenanceCategory,
+  MaintenanceRecord,
+} from './generated'
 
-/** 車両が車検証に紐づいているか。UI 側の判定はこれに寄せる (フラグを別途持たない)。 */
+import type {
+  MaintenanceVehicle,
+  MaintenanceFile as GeneratedMaintenanceFile,
+  VehicleListResponse as GeneratedVehicleListResponse,
+  MaintenanceRecordsResponse as GeneratedMaintenanceRecordsResponse,
+} from './generated'
+
+/**
+ * 車両が車検証に紐づいているか。UI 側の判定はこれに寄せる (フラグを別途持たない)。
+ *
+ * ★ `MaintenanceVehicle` は車検証番号 (`cert_no`) も車検満了日も保持していない。
+ * 紐づけ済みの車両について表示できるのは `car_id` と `carins_linked_at` だけ
+ * (車検満了日を出すには backend 側の API 追加が要る — 別 issue)。
+ */
 export function isVehicleLinked(vehicle: Pick<MaintenanceVehicle, 'car_id'>): boolean {
   return vehicle.car_id != null
 }
 
-export interface MaintenanceVehiclesResponse {
-  items: MaintenanceVehicle[]
-  total: number
-  page: number
-  per_page: number
-}
+// --- 車両: リクエスト body / クエリ / レスポンス ---
 
-export interface MaintenanceVehicleFilter {
-  q?: string
-  /** true = 紐づけ済みのみ、false = 未紐づけのみ、未指定 = 絞り込みなし。 */
-  linked?: boolean
-  page?: number
-  per_page?: number
-}
-
-/** `car_id` は送らなくてよい (backend が採番する)。 */
+/**
+ * override (a): `POST /api/maintenance/vehicles` の body。
+ *
+ * ★ `car_id` は backend の `CreateMaintenanceVehicle` には在るが、ここでは
+ * 意図的に持たせていない。登録番号だけで車両登録が完結することが設計要件で
+ * (車検証が無いテナント / 後から紐づけたいケース、CLAUDE.md 参照)、carins を
+ * 新規登録フローに混ぜないため。紐づけは `PUT .../carins` 側の仕事。
+ */
 export interface CreateMaintenanceVehicle {
   registration_number: string
-  display_name?: string
-  note?: string
+  display_name?: string | null
+  note?: string | null
 }
 
+/** override (a): `PUT /api/maintenance/vehicles/{id}` の body (COALESCE 意味論)。 */
 export interface UpdateMaintenanceVehicle {
-  registration_number?: string
-  display_name?: string
-  note?: string
+  registration_number?: string | null
+  display_name?: string | null
+  note?: string | null
 }
 
-/** 車検証候補がどう一致したか。`'none'` は「一致無し」を表し、紐づけ実行時は 400 になる。 */
-export type CarInsMatchedBy = 'registration_number' | 'cert_no' | 'none'
-
-export interface CarInsCandidate {
-  car_id: string
-  cert_no: string
-  registration_number: string
-  /** 車検満了日 (YYYY-MM-DD)。 */
-  expiry_date: string | null
-  matched_by: CarInsMatchedBy
+/** override (a)(b): `GET /api/maintenance/vehicles` のクエリパラメータ。 */
+export interface VehicleListFilter {
+  q?: string | null
+  /** true = 紐づけ済みのみ、false = 未紐づけのみ、未指定 = 絞り込みなし。 */
+  linked?: boolean | null
+  page?: number | null
+  per_page?: number | null
 }
 
-/** どちらか一方 (または両方) を指定して紐づけを試みる。 */
-export interface LinkCarIns {
-  cert_no?: string
-  car_id?: string
-}
+/** override (b): `GET /api/maintenance/vehicles` のレスポンス。 */
+export type VehicleListResponse =
+  Omit<GeneratedVehicleListResponse, 'total' | 'page' | 'per_page'>
+  & { total: number, page: number, per_page: number }
 
 /**
- * 整備カテゴリ 1 行 (`maintenance_categories`)。初回アクセス時に backend が
- * テナントごとの既定 5 件 (定期点検・修理・部品交換・タイヤ交換・オイル交換) を
- * 自動で seed する — フロントで既定値を持たないこと。
+ * override (a): `PUT /api/maintenance/vehicles/{id}/carins` の body。
+ * どちらか一方 (または両方) を指定して紐づけを試みる。
+ *
+ * backend は `cert_no` / `car_id` の OR で車検証を引き、一致した方を
+ * `matched_by` (`'cert_no'` | `'car_id'` | `'none'`) として扱う。`'none'` は
+ * 400 になる — 値そのものはレスポンスに載らないので、フロントは
+ * `ApiError.status` の 400 / 409 で文言を出し分ける (useVehicleDetail.link)。
  */
-export interface MaintenanceCategory {
-  id: string
-  tenant_id: string
-  name: string
-  sort_order: number
-  created_at: string
+export interface LinkCarinsRequest {
+  cert_no?: string | null
+  car_id?: string | null
 }
 
-/** `POST /api/maintenance/categories` の body。同名で追加すると 409。 */
+// --- 整備カテゴリ ---
+
+/** override (a): `POST /api/maintenance/categories` の body。同名で追加すると 409。 */
 export interface CreateMaintenanceCategory {
   name: string
-  sort_order?: number
+  sort_order?: number | null
 }
 
-/**
- * 整備記録 1 行 (`maintenance_records`)。`cost` は `NUMERIC(12,2)` を
- * backend が `::text` キャストして文字列で返す (`f64` に丸めない作法)。
- */
-export interface MaintenanceRecord {
-  id: string
-  tenant_id: string
-  vehicle_id: string
-  category_id: string
-  /** 整備実施日 (YYYY-MM-DD) */
-  performed_on: string
-  odometer_km: number | null
-  vendor: string | null
-  description: string | null
-  cost: string | null
-  /** 次回期限 (YYYY-MM-DD) */
-  next_due_on: string | null
-  created_by: string | null
-  created_at: string
-  updated_at: string
-  deleted_at: string | null
-}
+// --- 整備記録 ---
 
-/**
- * `POST /api/maintenance/records` の body。`vehicle_id` / `category_id` は
- * 他テナントのものを指定すると 400。
- */
+/** override (a): `POST /api/maintenance/records` の body。 */
 export interface CreateMaintenanceRecord {
   vehicle_id: string
   category_id: string
   performed_on: string
-  odometer_km?: number
-  vendor?: string
-  description?: string
-  cost?: number
-  next_due_on?: string
+  odometer_km?: number | null
+  vendor?: string | null
+  description?: string | null
+  cost?: number | null
+  next_due_on?: string | null
 }
 
-/** `PUT /api/maintenance/records/{id}` の body。`undefined` のフィールドは変更しない (COALESCE 意味論)。 */
+/** override (a): `PUT /api/maintenance/records/{id}` の body (COALESCE 意味論)。 */
 export interface UpdateMaintenanceRecord {
-  vehicle_id?: string
-  category_id?: string
-  performed_on?: string
-  odometer_km?: number
-  vendor?: string
-  description?: string
-  cost?: number
-  next_due_on?: string
+  vehicle_id?: string | null
+  category_id?: string | null
+  performed_on?: string | null
+  odometer_km?: number | null
+  vendor?: string | null
+  description?: string | null
+  cost?: number | null
+  next_due_on?: string | null
 }
 
-/** `GET /api/maintenance/records` のクエリパラメータ。 */
+/** override (a)(b): `GET /api/maintenance/records` のクエリパラメータ。 */
 export interface MaintenanceRecordListFilter {
-  vehicle_id?: string
-  category_id?: string
+  vehicle_id?: string | null
+  category_id?: string | null
   /** `performed_on` に対する範囲検索 (以上、YYYY-MM-DD) */
-  date_from?: string
+  date_from?: string | null
   /** `performed_on` に対する範囲検索 (以下、YYYY-MM-DD) */
-  date_to?: string
+  date_to?: string | null
   /** `description` / `vendor` の部分一致 */
-  q?: string
-  page?: number
-  per_page?: number
+  q?: string | null
+  page?: number | null
+  per_page?: number | null
 }
 
-export interface MaintenanceRecordsResponse {
-  records: MaintenanceRecord[]
-  total: number
-  page: number
-  per_page: number
-}
+/** override (b): `GET /api/maintenance/records` のレスポンス。 */
+export type MaintenanceRecordsResponse =
+  Omit<GeneratedMaintenanceRecordsResponse, 'total' | 'page' | 'per_page'>
+  & { total: number, page: number, per_page: number }
 
 /**
- * 整備記録に添付されたファイル (`crates/alc-maintenance/src/models.rs:197-209`)。
- * 一覧・download は backend 側で `deleted_at IS NULL` により削除済みを除外済み。
+ * override (b): 整備記録の添付ファイル。`size_bytes` だけが `i64` → `bigint` で
+ * 実物と食い違うので、そこだけ差し替えて他は生成型から引く
+ * (backend が列を足したら自動で追随する)。一覧・download は backend 側で
+ * `deleted_at IS NULL` により削除済みを除外済み。
  */
-export interface MaintenanceFile {
-  id: string
-  tenant_id: string
-  record_id: string
-  filename: string
-  content_type: string
-  storage_key: string
-  size_bytes: number
-  created_at: string
-  deleted_at: string | null
-}
+export type MaintenanceFile =
+  Omit<GeneratedMaintenanceFile, 'size_bytes'> & { size_bytes: number }

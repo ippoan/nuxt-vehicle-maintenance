@@ -1,5 +1,5 @@
 import { getVehicle, updateVehicle, deleteVehicle, getCarInsCandidates, linkCarIns, unlinkCarIns, ApiError } from '~/utils/api'
-import type { MaintenanceVehicle, UpdateMaintenanceVehicle, CarInsCandidate, LinkCarIns } from '~/types'
+import type { MaintenanceVehicle, UpdateMaintenanceVehicle, CarinsCandidate, LinkCarinsRequest } from '~/types'
 
 /**
  * 車両の詳細・編集 + 車検証の紐づけ UI (vehicles/[id].vue)。
@@ -18,7 +18,7 @@ export function useVehicleDetail(id: string) {
 
   const deleting = ref(false)
 
-  const candidates = ref<CarInsCandidate[]>([])
+  const candidates = ref<CarinsCandidate[]>([])
   const candidatesLoading = ref(false)
   const candidatesError = ref<string | null>(null)
   const candidatesLoaded = ref(false)
@@ -88,7 +88,7 @@ export function useVehicleDetail(id: string) {
    * 409 (他の車両が既にその車検証を持つ) を返す場合があるので、
    * ユーザーに分かる文言で出し分ける。
    */
-  async function link(data: LinkCarIns): Promise<boolean> {
+  async function link(data: LinkCarinsRequest): Promise<boolean> {
     linking.value = true
     linkError.value = null
     try {
@@ -116,7 +116,7 @@ export function useVehicleDetail(id: string) {
     try {
       await unlinkCarIns(id)
       if (vehicle.value) {
-        vehicle.value = { ...vehicle.value, car_id: null, cert_no: null, car_inspection_expiry: null }
+        vehicle.value = { ...vehicle.value, car_id: null, carins_linked_at: null }
       }
       return true
     } catch (e) {

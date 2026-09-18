@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { makeMaintenanceVehicle, makeCarInsCandidate } from '../helpers/test-data'
+import { makeMaintenanceVehicle, makeCarinsCandidate } from '../helpers/test-data'
 
 const pushMock = vi.fn()
 const getVehicleMock = vi.fn()
@@ -30,8 +30,8 @@ import { useVehicleDetail } from '~/composables/useVehicleDetail'
 import { ApiError } from '~/utils/api'
 
 const vehicle = makeMaintenanceVehicle()
-const linkedVehicle = makeMaintenanceVehicle({ car_id: 'car-1', cert_no: 'CERT-0001', car_inspection_expiry: '2027-03-31' })
-const candidate = makeCarInsCandidate()
+const linkedVehicle = makeMaintenanceVehicle({ car_id: 'car-1', carins_linked_at: '2026-02-03T09:00:00Z' })
+const candidate = makeCarinsCandidate()
 
 describe('useVehicleDetail', () => {
   beforeEach(() => {
@@ -147,13 +147,13 @@ describe('useVehicleDetail', () => {
     expect(d.linkError.value).toBe('network down')
   })
 
-  it('unlink clears car_id/cert_no/car_inspection_expiry on the local vehicle', async () => {
+  it('unlink clears car_id/carins_linked_at on the local vehicle', async () => {
     unlinkCarInsMock.mockResolvedValue(undefined)
     const d = useVehicleDetail('vehicle-1')
     d.vehicle.value = linkedVehicle
     const ok = await d.unlink()
     expect(ok).toBe(true)
-    expect(d.vehicle.value).toMatchObject({ car_id: null, cert_no: null, car_inspection_expiry: null })
+    expect(d.vehicle.value).toMatchObject({ car_id: null, carins_linked_at: null })
   })
 
   it('unlink sets unlinkError on failure', async () => {
