@@ -35,10 +35,18 @@ rust-alc-api の `alc-maintenance` crate (`/api/maintenance/*`) を叩く。
   `tests/fixtures/*.sql` も空のプレースホルダのため (下記)。#c651-2 マージ後、
   実際の schema に合わせて fixtures を書いてから true に戻す。
 - `ippoan/nuxt-trouble` にあった `preview-deploy.yml` / `tag-release.yml` /
-  `release-wave.yml` / `release-wave-retest.yml` / `skills-check.yml` はこの repo に
-  まだ入れていない (いずれも deploy を伴うか、この新 repo 未登録の org 設定
-  (`release-wave-targets.yaml` の entry 等) に依存するため)。auth-worker 登録・
-  release-wave 登録が済んだ後で親の判断で追加する。
+  `release-wave.yml` / `release-wave-retest.yml` / `skills-check.yml` / `ci-shape-report.yml`
+  はこの repo にまだ入れていない (いずれも deploy を伴うか、この新 repo 未登録の org 設定
+  に依存するため)。auth-worker 登録・release-wave 登録が済んだ後で親の判断で追加する。
+  - `ci-shape-report.yml` は `ippoan/ci-workflows` の reusable が
+    `secrets.RELEASE_WAVE_WEBHOOK_SECRET` (org secret) で ci-dashboard の
+    `/webhooks/ci-shape` に POST する。その org secret のアクセス範囲が
+    「選択した repository のみ」だと、この新 repo は対象外で fail し続ける
+    (`CI_SHAPE_SECRET is empty` で loud fail する実装)。前提が確認できるまで外した。
+  - `cap-catalog-extract.yml` (→ `ippoan/ci-workflows` の `catalog-extract.yml`)
+    は逆に **入れてある**。secrets を一切使わず (`secrets: inherit` も無し)、
+    source を静的解析して artifact (JSONL) を upload するだけ (Refs
+    ippoan/cap-catalog#3)。org 側の登録が無くても落ちない構成。
 - `.ippoan-dev.yaml` の `port: 3018` は仮値。`ippoan/dev-proxy/registry.json` に
   未登録なので、登録時に実際の値と突き合わせること。
 
