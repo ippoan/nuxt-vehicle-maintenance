@@ -38,15 +38,6 @@ if (process.env.TEST_LIVE === '1' && !isLive) {
 /** 同一テナントに存在しない id (400 / 404 の確認用)。 */
 const ABSENT_ID = '00000000-0000-0000-0000-0000000000ff'
 
-/**
- * 実レスポンスのフィールドを app/types の宣言と無関係に読む。
- * この層は「手書き型に無い / 余分なフィールド」を炙り出すのが仕事なので、
- * 型が正されるまでの間もテストが型エラーにならないようにする。
- */
-function field(obj: object, key: string): unknown {
-  return (obj as Record<string, unknown>)[key]
-}
-
 describe.skipIf(!isLive)('maintenance API (live)', () => {
   beforeAll(async () => {
     restoreNativeApis()
@@ -120,12 +111,12 @@ describe.skipIf(!isLive)('maintenance API (live)', () => {
     it('cert_no だけで紐づけでき、解除で元に戻る', async () => {
       const linked = await linkCarIns(TEST_VEHICLE_UNLINKED_ID, { cert_no: TEST_CERT_NO })
       expect(linked.car_id).toBe(TEST_CAR_ID)
-      expect(field(linked, 'carins_linked_at')).not.toBeNull()
+      expect(linked.carins_linked_at).not.toBeNull()
 
       await unlinkCarIns(TEST_VEHICLE_UNLINKED_ID)
       const after = await getVehicle(TEST_VEHICLE_UNLINKED_ID)
       expect(after.car_id).toBeNull()
-      expect(field(after, 'carins_linked_at')).toBeNull()
+      expect(after.carins_linked_at).toBeNull()
     })
 
     it('一致する車検証が無ければ 400 (CLAUDE.md の出し分け)', async () => {

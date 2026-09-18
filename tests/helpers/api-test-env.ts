@@ -125,7 +125,18 @@ function withInjectedIdentity(base: typeof fetch): typeof fetch {
 export function restoreNativeApis() {
   if (!isLive) return
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  globalThis.Blob = require('node:buffer').Blob
+  const buffer = require('node:buffer')
+  globalThis.Blob = buffer.Blob
+  // ★ File も native に戻すこと。undici の FormData は自前の brand check で
+  //   Blob/File を見分けるため、happy-dom の File を append すると
+  //   multipart の part に filename が付かず、backend が file_name() を
+  //   None と見て filename が "unknown" になる (写真添付で実際に踏んだ)。
+  //
+  //   これは **このテスト基盤だけの問題**で、製品のバグではない — 実ブラウザでは
+  //   File も FormData も native なので brand check は通り、filename は正しく付く。
+  //   逆に言うと、戻し忘れると integration が**偽の赤**を出し「backend が filename を
+  //   落としている」と誤診させる。app/ 側を直しにいかないこと。
+  globalThis.File = buffer.File
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   globalThis.URL = require('node:url').URL
   // eslint-disable-next-line @typescript-eslint/no-require-imports
