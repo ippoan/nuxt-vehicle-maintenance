@@ -3,17 +3,43 @@
  * API テスト共通環境
  *
  * API_BASE_URL が設定されていれば実 API (live)、未設定なら mock fetch。
- * backend (alc-maintenance crate) は #c651-2 がまだマージされていないため、
- * このタスク時点では常に mock (isLive = false) で走る。has_integration は
- * .github/workflows/test.yml で false にしてあり、docker-compose.test.yml の
- * 実 API 経路は使わない。#c651-2 マージ後の再有効化に備えて nuxt-trouble と
- * 同じ形にしておく。
+ * live で走らせるのは tests/integration/ 配下だけで、そこは
+ * .github/workflows/test.yml の integration_test_command が
+ * docker-compose.test.yml の API (alc-maintenance crate) を相手に回す。
+ * それ以外の unit テストは常に mock (isLive = false)。
+ *
+ * ★ live では fetch に X-Tenant-ID を被せる (下の withInjectedIdentity)。
+ *   本番では auth-worker がこのヘッダーを注入し、rust-alc-api の
+ *   require_tenant_header (crates/alc-core/src/auth_middleware.rs:65) は
+ *   欠落を 401 にする。app/utils/api.ts は設計上テナントを一切送らない
+ *   (送れると詐称の穴になる) ので、integration では**テスト側が auth-worker の
+ *   代役**をする。app 側のコードには手を入れない。
  */
 import { vi, expect } from 'vitest'
 import { initApi } from '~/utils/api'
 
 export const isLive = !!process.env.API_BASE_URL
 const API_BASE = process.env.API_BASE_URL || 'https://api.example.com'
+
+// tests/fixtures/seed.sql と一致させること。
+export const TEST_TENANT_ID = '11111111-1111-1111-1111-111111111111'
+/** 車検証 未紐づけ (seed.sql の ...301) */
+export const TEST_VEHICLE_UNLINKED_ID = '33333333-3333-3333-3333-333333333301'
+/** 車検証 CAR00000000002 を紐づけ済み (seed.sql の ...302) */
+export const TEST_VEHICLE_LINKED_ID = '33333333-3333-3333-3333-333333333302'
+export const TEST_CATEGORY_ID = '22222222-2222-2222-2222-222222222201'
+export const TEST_RECORD_ID = '44444444-4444-4444-4444-444444444401'
+/**
+ * TEST_VEHICLE_UNLINKED_ID の登録番号に一致する車検証 (seed.sql)。
+ * 形は normalize_carins_numbers の検査に合わせる — cert_no は 12〜13 桁の数字、
+ * car_id は 14 文字の英数字。外れた値は照合前に 400 で弾かれる。
+ */
+export const TEST_CERT_NO = '100000000001'
+export const TEST_CAR_ID = 'CAR00000000001'
+/** TEST_VEHICLE_LINKED_ID が既に持っている car_id (409 の確認に使う) */
+export const TEST_LINKED_CAR_ID = 'CAR00000000002'
+/** 形式は正しいが実在しない cert_no (「一致無し」の 400 を出す) */
+export const TEST_ABSENT_CERT_NO = '999999999999'
 
 export const mockFetch = vi.fn()
 
@@ -82,16 +108,42 @@ async function waitForApi(url: string, maxRetries = 30): Promise<void> {
 
 let liveReady = false
 
+/**
+ * live 用の fetch ラッパ。本番で auth-worker が注入する identity ヘッダーを
+ * ここで足す。app/utils/api.ts 側は一切テナントを送らないままなので、
+ * 「フロントは X-Tenant-ID を送らない」という unit テストの前提は壊れない
+ * (このラッパは isLive のときしか掛からない)。
+ */
+function withInjectedIdentity(base: typeof fetch): typeof fetch {
+  return ((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+    const headers = new Headers(init?.headers)
+    headers.set('X-Tenant-ID', TEST_TENANT_ID)
+    return base(input, { ...init, headers })
+  }) as typeof fetch
+}
+
 export function restoreNativeApis() {
   if (!isLive) return
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  globalThis.Blob = require('node:buffer').Blob
+  const buffer = require('node:buffer')
+  globalThis.Blob = buffer.Blob
+  // ★ File も native に戻すこと。undici の FormData は自前の brand check で
+  //   Blob/File を見分けるため、happy-dom の File を append すると
+  //   multipart の part に filename が付かず、backend が file_name() を
+  //   None と見て filename が "unknown" になる (写真添付で実際に踏んだ)。
+  //
+  //   これは **このテスト基盤だけの問題**で、製品のバグではない — 実ブラウザでは
+  //   File も FormData も native なので brand check は通り、filename は正しく付く。
+  //   逆に言うと、戻し忘れると integration が**偽の赤**を出し「backend が filename を
+  //   落としている」と誤診させる。app/ 側を直しにいかないこと。
+  globalThis.File = buffer.File
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   globalThis.URL = require('node:url').URL
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const undici = require('undici')
   globalThis.FormData = undici.FormData
-  globalThis.fetch = undici.fetch
+  // undici.fetch から毎回組み直すので、複数回呼ばれても二重ラップにならない。
+  globalThis.fetch = withInjectedIdentity(undici.fetch)
 }
 
 export async function setupApi() {
