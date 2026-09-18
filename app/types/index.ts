@@ -34,6 +34,8 @@ export type {
   CarinsCandidate,
   MaintenanceCategory,
   MaintenanceRecord,
+  CarinsImportCandidate,
+  CarinsImportRequest,
 } from './generated'
 
 import type {
@@ -41,6 +43,7 @@ import type {
   MaintenanceFile as GeneratedMaintenanceFile,
   VehicleListResponse as GeneratedVehicleListResponse,
   MaintenanceRecordsResponse as GeneratedMaintenanceRecordsResponse,
+  CarinsImportResult as GeneratedCarinsImportResult,
 } from './generated'
 
 /**
@@ -166,3 +169,13 @@ export type MaintenanceRecordsResponse =
  */
 export type MaintenanceFile =
   Omit<GeneratedMaintenanceFile, 'size_bytes'> & { size_bytes: number }
+
+// --- 車検証からの一括取り込み ---
+
+/**
+ * override (b): 取り込み結果の件数。3 つとも `i64` → `bigint` で実物と食い違うので
+ * 差し替える (backend が欄を足したら自動で追随する)。
+ */
+export type CarinsImportResult =
+  Omit<GeneratedCarinsImportResult, 'created' | 'linked' | 'skipped'>
+  & { created: number, linked: number, skipped: number }

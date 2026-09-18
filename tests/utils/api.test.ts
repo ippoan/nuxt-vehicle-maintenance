@@ -13,6 +13,8 @@ import {
   getCarInsCandidates,
   linkCarIns,
   unlinkCarIns,
+  getCarinsImportCandidates,
+  importFromCarins,
   getMaintenanceCategories,
   createMaintenanceCategory,
   updateMaintenanceCategorySortOrder,
@@ -29,7 +31,7 @@ import {
   getFileBlobUrl,
   ApiError,
 } from '~/utils/api'
-import { makeMaintenanceVehicle, makeCarinsCandidate, makeMaintenanceCategory, makeMaintenanceRecord, makeMaintenanceFile } from '../helpers/test-data'
+import { makeMaintenanceVehicle, makeCarinsCandidate, makeCarinsImportCandidate, makeMaintenanceCategory, makeMaintenanceRecord, makeMaintenanceFile } from '../helpers/test-data'
 
 describe('maintenance vehicle API', () => {
   beforeEach(async () => {
@@ -178,6 +180,34 @@ describe('maintenance vehicle API', () => {
         const [url, opts] = mockFetch.mock.calls[0]
         expect(url).toBe(`${API_BASE}/api/maintenance/vehicles/vehicle-1/carins`)
         expect(opts.method).toBe('DELETE')
+      })
+    })
+  })
+
+  describe('getCarinsImportCandidates', () => {
+    it('fetches all not-yet-imported carins candidates (no args)', async () => {
+      const mockCandidates = [makeCarinsImportCandidate()]
+      const result = await verifyApi(() => getCarinsImportCandidates(), mockCandidates)
+      expectMock(result).toEqual(mockCandidates)
+      assertMock(() => {
+        expectMock(mockFetch).toHaveBeenCalledWith(
+          `${API_BASE}/api/maintenance/vehicles/carins-import-candidates`,
+          expect.objectContaining({ headers: expect.any(Object) }),
+        )
+      })
+    })
+  })
+
+  describe('importFromCarins', () => {
+    it('posts selected car_ids and returns counts', async () => {
+      const mockResult = { created: 2, linked: 1, skipped: 0 }
+      const result = await verifyApi(() => importFromCarins(['CAR-1', 'CAR-2']), mockResult)
+      expectMock(result).toEqual(mockResult)
+      assertMock(() => {
+        const [url, opts] = mockFetch.mock.calls[0]
+        expect(url).toBe(`${API_BASE}/api/maintenance/vehicles/carins-import`)
+        expect(opts.method).toBe('POST')
+        expect(JSON.parse(opts.body)).toEqual({ car_ids: ['CAR-1', 'CAR-2'] })
       })
     })
   })

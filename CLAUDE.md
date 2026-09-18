@@ -23,32 +23,33 @@ rust-alc-api の `alc-maintenance` crate (`/api/maintenance/*`) を叩く。
 | staging | https://maintenance-staging.ippoan.org | `env.staging` |
 | preview | https://maintenance-preview.ippoan.org | `env.preview` (staging backend を再利用、専用 DB は持たない) |
 
-**★ このタスク (#c651-3) 時点ではまだデプロイしていない。** 前提条件が未了:
+**★ production は稼働中。** auth-worker 側の前提は実測で確認済み (2026-09-18、
+`.github/workflows/test.yml` の `has_deploy: true` コメント参照) — KV `origins:prod` に
+`https://maintenance.ippoan.org`、`origins:staging` に maintenance-staging /
+maintenance-preview が実在し、`INTERNAL_SHARED_SECRET` は全 consumer 共有の
+Secrets Store entry で default / staging / preview すべてに bind 済み (新規払い出し不要)。
+ACL は ippoan origin を素通しする opt-in 方式なので、この repo 個別の登録も不要だった。
 
-- auth-worker 側にこの consumer の登録 (ACL / `INTERNAL_SHARED_SECRET` の払い出し) が
-  まだ済んでいない。登録前に deploy すると前段の認証が無い口が生えるため、登録は親が
-  別途手配してから `wrangler deploy` を打つこと。
-- `.github/workflows/test.yml` は `has_deploy: false` にしてある (上と同じ理由)。
-  登録が済んだら true に戻す。
-- `.github/workflows/test.yml` は `has_integration: false` にしてある。backend
-  (`alc-maintenance` crate, #c651-2) の migration/seed がまだ無く、
-  `tests/fixtures/*.sql` も空のプレースホルダのため (下記)。#c651-2 マージ後、
-  実際の schema に合わせて fixtures を書いてから true に戻す。
-- `ippoan/nuxt-trouble` にあった `preview-deploy.yml` / `tag-release.yml` /
-  `release-wave.yml` / `release-wave-retest.yml` / `skills-check.yml` / `ci-shape-report.yml`
-  はこの repo にまだ入れていない (いずれも deploy を伴うか、この新 repo 未登録の org 設定
-  に依存するため)。auth-worker 登録・release-wave 登録が済んだ後で親の判断で追加する。
+- `.github/workflows/test.yml` は `has_deploy: true` になっている ([test.yml:52](.github/workflows/test.yml)、上記の理由で有効化済み)。
+- `.github/workflows/test.yml` は `has_integration: true` になっている ([test.yml:28](.github/workflows/test.yml))。backend
+  (`alc-maintenance` crate, #c651-2) がマージされ migrations/147 が 4 テーブルを作るため、
+  `tests/fixtures/{init_local_db,seed}.sql` を実 schema に合わせて書いて有効化済み。
+- `ippoan/nuxt-trouble` にあった workflow のうち、**`tag-release.yml` / `release-wave.yml` /
+  `cap-catalog-extract.yml` は入れてある** (`release-wave.yml` は commit `31c6226`
+  (PR #6) で追加)。**`preview-deploy.yml` / `release-wave-retest.yml` / `skills-check.yml` /
+  `ci-shape-report.yml` はまだ入れていない** (org 未登録の設定に依存するため)。
   - `ci-shape-report.yml` は `ippoan/ci-workflows` の reusable が
     `secrets.RELEASE_WAVE_WEBHOOK_SECRET` (org secret) で ci-dashboard の
     `/webhooks/ci-shape` に POST する。その org secret のアクセス範囲が
     「選択した repository のみ」だと、この新 repo は対象外で fail し続ける
     (`CI_SHAPE_SECRET is empty` で loud fail する実装)。前提が確認できるまで外した。
   - `cap-catalog-extract.yml` (→ `ippoan/ci-workflows` の `catalog-extract.yml`)
-    は逆に **入れてある**。secrets を一切使わず (`secrets: inherit` も無し)、
-    source を静的解析して artifact (JSONL) を upload するだけ (Refs
-    ippoan/cap-catalog#3)。org 側の登録が無くても落ちない構成。
-- `.ippoan-dev.yaml` の `port: 3018` は仮値。`ippoan/dev-proxy/registry.json` に
-  未登録なので、登録時に実際の値と突き合わせること。
+    は secrets を一切使わず (`secrets: inherit` も無し)、source を静的解析して
+    artifact (JSONL) を upload するだけ (Refs ippoan/cap-catalog#3)。org 側の登録が
+    無くても落ちない構成。
+- `.ippoan-dev.yaml` の `port` は `3024` (2026-09-18 時点、`ippoan/dev-proxy/registry.json`
+  の空き番の実測)。TODO(#c651-12) — 登録 PR がまだ入っておらず未登録なので
+  `ci/Dev Proxy Validate` はまだ通らない (登録され次第、値の一致を確認すること)。
 
 ## 型 — ★ TODO(#c651-2 マージ後)
 
