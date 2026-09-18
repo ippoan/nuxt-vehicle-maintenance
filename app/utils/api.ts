@@ -14,6 +14,8 @@ import type {
   MaintenanceRecordListFilter,
   MaintenanceRecordsResponse,
   MaintenanceFile,
+  CarinsImportCandidate,
+  CarinsImportResult,
 } from '~/types'
 
 let apiBase = ''
@@ -141,6 +143,26 @@ export async function linkCarIns(vehicleId: string, data: LinkCarinsRequest): Pr
 export async function unlinkCarIns(vehicleId: string): Promise<void> {
   await request<void>(`/api/maintenance/vehicles/${encodeURIComponent(vehicleId)}/carins`, {
     method: 'DELETE',
+  })
+}
+
+// --- 車検証からの一括取り込み ---
+
+/**
+ * まだ `maintenance_vehicles` に取り込まれていない電子車検証の全件。
+ * ページネーション無し (backend の実装、Refs #662)。
+ *
+ * ★ `getCarInsCandidates` (1 車両に一致する候補) とは別物。統合しないこと。
+ */
+export async function getCarinsImportCandidates(): Promise<CarinsImportCandidate[]> {
+  return request<CarinsImportCandidate[]>('/api/maintenance/vehicles/carins-import-candidates')
+}
+
+/** 選んだ `car_id` を 1 トランザクションで取り込む。行は返らないので件数だけ受け取り、一覧は呼び出し側で取り直す。 */
+export async function importFromCarins(carIds: string[]): Promise<CarinsImportResult> {
+  return request<CarinsImportResult>('/api/maintenance/vehicles/carins-import', {
+    method: 'POST',
+    body: JSON.stringify({ car_ids: carIds }),
   })
 }
 

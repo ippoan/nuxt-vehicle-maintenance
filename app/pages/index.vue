@@ -6,6 +6,11 @@ const { filter, vehicles, total, loading, errorMessage, fetchVehicles, setPage, 
 
 const qInput = ref('')
 const unlinkedOnly = ref(false)
+const importOpen = ref(false)
+
+function onImported() {
+  fetchVehicles()
+}
 
 onMounted(() => fetchVehicles())
 
@@ -32,8 +37,13 @@ function goToVehicle(id: string) {
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <h1 class="text-xl font-bold">車両一覧</h1>
-      <UButton label="車両を登録" icon="i-lucide-plus" to="/vehicles/new" />
+      <div class="flex gap-2">
+        <UButton label="車検証から取り込み" icon="i-lucide-file-input" variant="outline" @click="importOpen = true" />
+        <UButton label="車両を登録" icon="i-lucide-plus" to="/vehicles/new" />
+      </div>
     </div>
+
+    <CarinsImportModal v-model:open="importOpen" @imported="onImported" />
 
     <UCard>
       <div class="flex flex-wrap items-center gap-4">

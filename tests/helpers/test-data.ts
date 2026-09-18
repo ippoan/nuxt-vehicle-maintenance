@@ -1,5 +1,5 @@
 /* v8 ignore start */
-import type { MaintenanceVehicle, CarinsCandidate, MaintenanceCategory, MaintenanceRecord, MaintenanceFile } from '~/types'
+import type { MaintenanceVehicle, CarinsCandidate, MaintenanceCategory, MaintenanceRecord, MaintenanceFile, CarinsImportCandidate } from '~/types'
 
 export function makeMaintenanceVehicle(overrides: Partial<MaintenanceVehicle> = {}): MaintenanceVehicle {
   return {
@@ -23,6 +23,17 @@ export function makeCarinsCandidate(overrides: Partial<CarinsCandidate> = {}): C
     cert_no: 'CERT-0001',
     // 電子車検証側の登録番号相当。車両マスタの registration_number とは別物。
     car_no: '品川 100 あ 1234',
+    ...overrides,
+  }
+}
+
+/** `existing_vehicle_id: null` = 未登録 (新規作成)。既存車両への紐づけを作るときは overrides で指定する。 */
+export function makeCarinsImportCandidate(overrides: Partial<CarinsImportCandidate> = {}): CarinsImportCandidate {
+  return {
+    car_id: 'CAR00000000010',
+    cert_no: '100000000010',
+    car_no: '品川 100 あ 5678',
+    existing_vehicle_id: null,
     ...overrides,
   }
 }

@@ -18,6 +18,9 @@ path = "app/composables/useVehicleNew.ts"
 path = "app/composables/useVehicleDetail.ts"
 
 [[files]]
+path = "app/composables/useCarinsImport.ts"
+
+[[files]]
 path = "app/composables/useMaintenanceCategories.ts"
 
 [[files]]
