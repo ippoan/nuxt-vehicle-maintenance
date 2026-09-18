@@ -57,8 +57,12 @@ services:
     volumes:
       - ./tests/fixtures/seed.sql:/seed.sql
     entrypoint: ["sh", "-c"]
+    # ★ -v ON_ERROR_STOP=1 は必須。psql は既定でエラーを飛ばして続行し **exit 0 で
+    # 終わる**ため、これが無いと seed が 1 行も入らなくても db-seed は成功扱いになり、
+    # api が空の DB で起動して integration test だけが理由不明で落ちる
+    # (実際に踏んだ: maintenance_* が無い古い backend image で seed 全滅、exit 0)。
     command:
-      - PGPASSWORD=test psql -h test-db -U postgres -f /seed.sql
+      - PGPASSWORD=test psql -v ON_ERROR_STOP=1 -h test-db -U postgres -f /seed.sql
     restart: "no"
 
   api:
