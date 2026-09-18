@@ -1,9 +1,9 @@
 import { getVehicles } from '~/utils/api'
-import type { MaintenanceVehicle, MaintenanceVehicleFilter } from '~/types'
+import type { MaintenanceVehicle, VehicleListFilter } from '~/types'
 
 /** 車両一覧 (index.vue)。検索 (`q`) と「未紐づけのみ」の絞り込みを持つ。 */
 export function useVehicleList() {
-  const filter = reactive<MaintenanceVehicleFilter>({
+  const filter = reactive<VehicleListFilter>({
     q: undefined,
     linked: undefined,
     page: 1,

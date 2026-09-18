@@ -65,7 +65,7 @@ function goToVehicle(id: string) {
             <th class="py-2 pr-4">登録番号</th>
             <th class="py-2 pr-4">社内車番</th>
             <th class="py-2 pr-4">車検証の紐づけ状態</th>
-            <th class="py-2 pr-4">車検満了日</th>
+            <th class="py-2 pr-4">紐づけ日</th>
           </tr>
         </thead>
         <tbody>
@@ -81,7 +81,7 @@ function goToVehicle(id: string) {
               <UBadge v-if="isVehicleLinked(vehicle)" color="success" variant="subtle">紐づけ済み</UBadge>
               <UBadge v-else color="neutral" variant="subtle">未紐づけ</UBadge>
             </td>
-            <td class="py-2 pr-4">{{ isVehicleLinked(vehicle) ? (vehicle.car_inspection_expiry || '-') : '-' }}</td>
+            <td class="py-2 pr-4">{{ vehicle.carins_linked_at?.slice(0, 10) || '-' }}</td>
           </tr>
           <tr v-if="vehicles.length === 0">
             <td colspan="4" class="py-6 text-center text-gray-400">該当する車両がありません</td>

@@ -148,11 +148,16 @@ function onUnlink() {
 
         <div v-if="isVehicleLinked(vehicle)" class="space-y-3">
           <UBadge color="success" variant="subtle">紐づけ済み</UBadge>
+          <!--
+            ★ 車検証番号 (cert_no) と車検満了日はここに出せない — backend の
+            MaintenanceVehicle が保持していないため (car_id と carins_linked_at
+            だけ)。出すには backend 側の API 追加が要る (別 issue)。
+          -->
           <dl class="grid grid-cols-2 gap-2 text-sm">
-            <dt class="text-gray-500">証明書番号</dt>
-            <dd>{{ vehicle.cert_no }}</dd>
-            <dt class="text-gray-500">車検満了日</dt>
-            <dd>{{ vehicle.car_inspection_expiry || '-' }}</dd>
+            <dt class="text-gray-500">車両 ID (car_id)</dt>
+            <dd>{{ vehicle.car_id }}</dd>
+            <dt class="text-gray-500">紐づけ日</dt>
+            <dd>{{ vehicle.carins_linked_at?.slice(0, 10) || '-' }}</dd>
           </dl>
           <p v-if="unlinkError" class="text-sm text-red-600">{{ unlinkError }}</p>
           <UButton
@@ -191,10 +196,8 @@ function onUnlink() {
                 class="flex items-center justify-between py-2 text-sm"
               >
                 <div>
-                  <div>{{ candidate.registration_number }} ({{ candidate.cert_no }})</div>
-                  <div class="text-xs text-gray-400">
-                    車検満了日: {{ candidate.expiry_date || '-' }}
-                  </div>
+                  <div>{{ candidate.car_no }} ({{ candidate.cert_no }})</div>
+                  <div class="text-xs text-gray-400">車両 ID: {{ candidate.car_id }}</div>
                 </div>
                 <UButton
                   label="この車検証に紐づける"

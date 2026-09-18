@@ -1,11 +1,11 @@
 import type {
   MaintenanceVehicle,
-  MaintenanceVehiclesResponse,
-  MaintenanceVehicleFilter,
+  VehicleListResponse,
+  VehicleListFilter,
   CreateMaintenanceVehicle,
   UpdateMaintenanceVehicle,
-  CarInsCandidate,
-  LinkCarIns,
+  CarinsCandidate,
+  LinkCarinsRequest,
   MaintenanceCategory,
   CreateMaintenanceCategory,
   MaintenanceRecord,
@@ -99,8 +99,8 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
 
 // --- Vehicles ---
 
-export async function getVehicles(filter: MaintenanceVehicleFilter = {}): Promise<MaintenanceVehiclesResponse> {
-  return request<MaintenanceVehiclesResponse>(`/api/maintenance/vehicles${toParams(filter)}`)
+export async function getVehicles(filter: VehicleListFilter = {}): Promise<VehicleListResponse> {
+  return request<VehicleListResponse>(`/api/maintenance/vehicles${toParams(filter)}`)
 }
 
 export async function getVehicle(id: string): Promise<MaintenanceVehicle> {
@@ -127,11 +127,11 @@ export async function deleteVehicle(id: string): Promise<void> {
 
 // --- 車検証の紐づけ ---
 
-export async function getCarInsCandidates(vehicleId: string): Promise<CarInsCandidate[]> {
-  return request<CarInsCandidate[]>(`/api/maintenance/vehicles/${encodeURIComponent(vehicleId)}/carins-candidates`)
+export async function getCarInsCandidates(vehicleId: string): Promise<CarinsCandidate[]> {
+  return request<CarinsCandidate[]>(`/api/maintenance/vehicles/${encodeURIComponent(vehicleId)}/carins-candidates`)
 }
 
-export async function linkCarIns(vehicleId: string, data: LinkCarIns): Promise<MaintenanceVehicle> {
+export async function linkCarIns(vehicleId: string, data: LinkCarinsRequest): Promise<MaintenanceVehicle> {
   return request<MaintenanceVehicle>(`/api/maintenance/vehicles/${encodeURIComponent(vehicleId)}/carins`, {
     method: 'PUT',
     body: JSON.stringify(data),

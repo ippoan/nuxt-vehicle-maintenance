@@ -29,7 +29,7 @@ import {
   getFileBlobUrl,
   ApiError,
 } from '~/utils/api'
-import { makeMaintenanceVehicle, makeCarInsCandidate, makeMaintenanceCategory, makeMaintenanceRecord, makeMaintenanceFile } from '../helpers/test-data'
+import { makeMaintenanceVehicle, makeCarinsCandidate, makeMaintenanceCategory, makeMaintenanceRecord, makeMaintenanceFile } from '../helpers/test-data'
 
 describe('maintenance vehicle API', () => {
   beforeEach(async () => {
@@ -134,7 +134,7 @@ describe('maintenance vehicle API', () => {
 
   describe('getCarInsCandidates', () => {
     it('fetches candidates for a vehicle', async () => {
-      const mockCandidates = [makeCarInsCandidate()]
+      const mockCandidates = [makeCarinsCandidate()]
       const result = await verifyApi(() => getCarInsCandidates('vehicle-1'), mockCandidates)
       expectMock(result).toEqual(mockCandidates)
       assertMock(() => {
@@ -148,7 +148,7 @@ describe('maintenance vehicle API', () => {
 
   describe('linkCarIns', () => {
     it('links a car_id/cert_no candidate', async () => {
-      const mockVehicle = makeMaintenanceVehicle({ car_id: 'car-1', cert_no: 'CERT-0001' })
+      const mockVehicle = makeMaintenanceVehicle({ car_id: 'car-1', carins_linked_at: '2026-02-03T09:00:00Z' })
       await verifyApi(() => linkCarIns('vehicle-1', { car_id: 'car-1', cert_no: 'CERT-0001' }), mockVehicle)
       assertMock(() => {
         const [url, opts] = mockFetch.mock.calls[0]

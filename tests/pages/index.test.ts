@@ -19,7 +19,7 @@ import IndexPage from '~/pages/index.vue'
 
 const linked = makeMaintenanceVehicle({
   id: 'v1', registration_number: '品川 100 あ 1111', display_name: '1号車',
-  car_id: 'car-1', cert_no: 'CERT-1', car_inspection_expiry: '2027-01-01',
+  car_id: 'car-1', carins_linked_at: '2026-02-03T09:00:00Z',
 })
 const unlinked = makeMaintenanceVehicle({ id: 'v2', registration_number: '品川 200 い 2222', display_name: null })
 
@@ -37,7 +37,9 @@ describe('index page (車両一覧)', () => {
     expect(wrapper.text()).toContain('品川 100 あ 1111')
     expect(wrapper.text()).toContain('1号車')
     expect(wrapper.text()).toContain('紐づけ済み')
-    expect(wrapper.text()).toContain('2027-01-01')
+    // 紐づけ日は carins_linked_at の日付部分。車検満了日は MaintenanceVehicle が
+    // 保持していないので列ごと持たない。
+    expect(wrapper.text()).toContain('2026-02-03')
     expect(wrapper.text()).toContain('品川 200 い 2222')
     expect(wrapper.text()).toContain('未紐づけ')
   })
