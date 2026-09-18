@@ -34,6 +34,7 @@ export const USelect = {
   emits: ['update:modelValue'],
 }
 export const UTooltip = { template: '<div :data-tooltip="text"><slot /></div>', props: ['text', 'content', 'delayDuration'] }
+export const UModal = { template: '<div v-if="open"><slot name="content" /></div>', props: ['open'] }
 export const NuxtLink = { template: '<a :href="to"><slot /></a>', props: ['to'] }
 export const NuxtLayout = { template: '<div><slot /></div>' }
 export const NuxtPage = { template: '<div />' }
@@ -42,9 +43,10 @@ export const AuthToolbar = {
   template: '<div data-testid="auth-toolbar"><button data-testid="apps-btn">Apps</button></div>',
   props: ['showCopyUrl', 'showQr'],
 }
+export const MaintenanceFilesStub = { template: '<div />', props: ['recordId'] }
 
 export const allStubs = {
   UApp, UCard, UButton, UIcon, UBadge, UInput, UFormField,
-  UTextarea, USwitch, USelect, UTooltip, NuxtLink, NuxtLayout, NuxtPage,
-  StagingFooter, AuthToolbar,
+  UTextarea, USwitch, USelect, UTooltip, UModal, NuxtLink, NuxtLayout, NuxtPage,
+  StagingFooter, AuthToolbar, MaintenanceFiles: MaintenanceFilesStub,
 }

@@ -13,6 +13,7 @@ import type {
   UpdateMaintenanceRecord,
   MaintenanceRecordListFilter,
   MaintenanceRecordsResponse,
+  MaintenanceFile,
 } from '~/types'
 
 let apiBase = ''
@@ -71,8 +72,13 @@ export class ApiError extends Error {
 export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!apiBase) throw new Error('API 未初期化: initApi() を呼んでください')
 
+  // FormData のときは Content-Type を付けない — 付けると boundary が潰れ、
+  // backend の multipart.next_field() が失敗する。fetch がブラウザ側で
+  // boundary 付きの multipart/form-data を自動生成する。
+  const isFormData = options.body instanceof FormData
+
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...buildAuthHeaders(),
     ...(options.headers as Record<string, string> || {}),
   }
@@ -192,4 +198,53 @@ export async function updateMaintenanceRecord(id: string, data: UpdateMaintenanc
 /** ソフト削除。存在しない (または既に削除済みの) id は 404。 */
 export async function deleteMaintenanceRecord(id: string): Promise<void> {
   await request<void>(`/api/maintenance/records/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+// --- 整備記録の写真添付 ---
+
+/** 一覧は backend 側で deleted_at IS NULL により削除済みを除外済み。フロントで再度フィルタしないこと。 */
+export async function getRecordFiles(recordId: string): Promise<MaintenanceFile[]> {
+  return request<MaintenanceFile[]>(`/api/maintenance/records/${encodeURIComponent(recordId)}/files`)
+}
+
+/** 1 回のアップロードは 1 ファイル (backend の upload_file が multipart field を 1 回しか読まないため)。 */
+export async function uploadRecordFile(recordId: string, file: File): Promise<MaintenanceFile> {
+  const fd = new FormData()
+  fd.append('file', file)
+  return request<MaintenanceFile>(`/api/maintenance/records/${encodeURIComponent(recordId)}/files`, {
+    method: 'POST',
+    body: fd,
+  })
+}
+
+/** 204 (body 無し)。 */
+export async function deleteFile(fileId: string): Promise<void> {
+  await request<void>(`/api/maintenance/files/${encodeURIComponent(fileId)}`, { method: 'DELETE' })
+}
+
+/**
+ * bytes をそのまま返す download エンドポイント (署名 URL ではない)。blob を
+ * `<a>` 要素経由でダウンロードさせる。`request()` は json() 固定なので
+ * ここだけ fetch を直接使う。
+ */
+export async function downloadFile(fileId: string, filename: string): Promise<void> {
+  const headers = buildAuthHeaders()
+  const res = await fetch(`${apiBase}/api/maintenance/files/${encodeURIComponent(fileId)}/download`, { headers })
+  if (!res.ok) throw new ApiError(res.status, res.statusText)
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+/** サムネイル表示用に download エンドポイントを取得して objectURL 化する。呼び出し側が revokeObjectURL する責務を持つ。 */
+export async function getFileBlobUrl(fileId: string): Promise<string> {
+  const headers = buildAuthHeaders()
+  const res = await fetch(`${apiBase}/api/maintenance/files/${encodeURIComponent(fileId)}/download`, { headers })
+  if (!res.ok) throw new ApiError(res.status, res.statusText)
+  const blob = await res.blob()
+  return URL.createObjectURL(blob)
 }
