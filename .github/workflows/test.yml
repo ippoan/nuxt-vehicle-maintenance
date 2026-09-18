@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+  packages: read
+  pull-requests: write
+  id-token: write
+  # ci-workflows#170 で auto-merge.yml の job が checks: read を宣言した
+  # (全 check green 検証ガード)。nested (frontend-ci 経由) でも leaf caller の
+  # 許可が無いと startup_failure になる (Refs ippoan/ci-workflows#169)。
+  checks: read
+
+jobs:
+  ci:
+    uses: ippoan/ci-workflows/.github/workflows/frontend-ci.yml@main
+    with:
+      # ★ #651-3 時点では両方 false:
+      # - has_integration: alc-maintenance crate の migration/seed が無く
+      #   (#c651-2 未マージ)、tests/fixtures/*.sql が空のため。マージ後に
+      #   docker-compose.test.yml と合わせて有効化する。
+      # - has_deploy: auth-worker 側にこの consumer の ACL / INTERNAL_SHARED_SECRET
+      #   登録がまだ済んでいないため。登録前に deploy すると前段の認証が無い口が
+      #   生える。登録が済んだら親の判断で true に戻す。
+      has_integration: false
+      has_deploy: false
+      install_command: 'npm install'
+      post_install_script: 'npx nuxt prepare && npx wrangler types'
+      # PR 時に @ippoan/auth-client@dev を overlay install する。
+      # createAuthWorkerProxyHandler は dev dist-tag にしか無く、committed
+      # lockfile があると "dev" 指定でも npm が古い版を再利用するため
+      # (npm/cli#7562)、この overlay が無いと typecheck が
+      # "@ippoan/auth-client/server が無い" で必ず fail する。Refs rust-alc-api#434
+      use_auth_client_dev: true
+    secrets: inherit

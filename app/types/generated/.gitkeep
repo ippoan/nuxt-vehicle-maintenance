@@ -1,0 +1,2 @@
+# TODO(#c651-2 マージ後): scripts/sync-ts-bindings.sh でここに ts-rs 生成型を展開する。
+# それまでは空 (app/types/index.ts の手書き型を使う。CLAUDE.md 参照)。

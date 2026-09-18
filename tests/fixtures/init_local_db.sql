@@ -1,0 +1,4 @@
+-- TODO(#c651-2 マージ後): alc-maintenance crate の schema/search_path に合わせて
+-- 実データを書く。この repo の scaffold 時点では backend の migration がまだ
+-- 無いため空のまま (docker-compose.test.yml の integration path は
+-- test.yml で has_integration: false にして未使用にしてある)。

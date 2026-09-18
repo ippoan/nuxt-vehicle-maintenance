@@ -1,0 +1,9 @@
+# dev-proxy metadata. Must mirror the entry for ippoan/nuxt-vehicle-maintenance in
+# ippoan/dev-proxy/registry.json. Mismatches fail ci/Dev Proxy Validate.
+#
+# TODO(#651-3): この repo はまだ ippoan/dev-proxy/registry.json に未登録。
+# port は仮値 (3018、nuxt-trouble の 3017 の次の空き番と推測)。登録時に
+# registry.json 側の実際の値と必ず突き合わせること。
+name: nuxt-vehicle-maintenance
+port: 3018
+cmd: "PORT=$PORT HOST=0.0.0.0 npm run dev"
