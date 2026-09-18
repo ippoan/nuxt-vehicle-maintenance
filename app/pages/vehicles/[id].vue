@@ -100,7 +100,7 @@ function onUnlink() {
 </script>
 
 <template>
-  <div class="max-w-2xl space-y-6">
+  <div class="max-w-5xl space-y-6">
     <div class="flex items-center gap-3">
       <UButton icon="i-lucide-arrow-left" variant="ghost" to="/" />
       <h1 class="text-xl font-bold">車両詳細</h1>
@@ -110,106 +110,120 @@ function onUnlink() {
     <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
 
     <template v-if="vehicle && !loading">
-      <UCard>
-        <template #header>
-          <h2 class="font-semibold">基本情報</h2>
-        </template>
+      <!-- 基本情報と車検証の紐づけは広い画面では横並び (狭い画面は従来どおり縦積み) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <UCard>
+          <template #header>
+            <h2 class="font-semibold">基本情報</h2>
+          </template>
 
-        <form class="space-y-4" @submit.prevent="onSave">
-          <UFormField label="登録番号" required>
-            <UInput v-model="editForm.registration_number" />
-          </UFormField>
-          <UFormField label="社内車番 (任意)">
-            <UInput v-model="editForm.display_name" />
-          </UFormField>
-          <UFormField label="メモ (任意)">
-            <UTextarea v-model="editForm.note" :rows="3" />
-          </UFormField>
+          <form class="space-y-4" @submit.prevent="onSave">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <UFormField label="登録番号" required>
+                <UInput v-model="editForm.registration_number" class="w-full" />
+              </UFormField>
+              <UFormField label="社内車番 (任意)">
+                <UInput v-model="editForm.display_name" class="w-full" />
+              </UFormField>
+            </div>
+            <UFormField label="メモ (任意)">
+              <UTextarea v-model="editForm.note" :rows="2" class="w-full" />
+            </UFormField>
 
-          <p v-if="saveError" class="text-sm text-red-600">{{ saveError }}</p>
+            <p v-if="saveError" class="text-sm text-red-600">{{ saveError }}</p>
 
-          <div class="flex items-center justify-between">
-            <UButton type="submit" label="保存する" :loading="saving" />
+            <div class="flex items-center justify-between">
+              <UButton type="submit" label="保存する" :loading="saving" />
+              <UButton
+                label="この車両を削除"
+                color="error"
+                variant="ghost"
+                :loading="deleting"
+                @click="onDelete"
+              />
+            </div>
+          </form>
+        </UCard>
+
+        <UCard>
+          <template #header>
+            <h2 class="font-semibold">車検証の紐づけ</h2>
+          </template>
+
+          <div v-if="isVehicleLinked(vehicle)" class="space-y-3">
+            <!--
+              ★ 車検証番号 (cert_no) と車検満了日はここに出せない — backend の
+              MaintenanceVehicle が保持していないため (car_id と carins_linked_at
+              だけ)。出すには backend 側の API 追加が要る (別 issue)。
+            -->
+            <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+              <UBadge color="success" variant="subtle">紐づけ済み</UBadge>
+              <dl class="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm">
+                <div class="flex items-baseline gap-2">
+                  <dt class="text-gray-500">車両 ID (car_id)</dt>
+                  <dd>{{ vehicle.car_id }}</dd>
+                </div>
+                <div class="flex items-baseline gap-2">
+                  <dt class="text-gray-500">紐づけ日</dt>
+                  <dd>{{ vehicle.carins_linked_at?.slice(0, 10) || '-' }}</dd>
+                </div>
+              </dl>
+            </div>
+            <p v-if="unlinkError" class="text-sm text-red-600">{{ unlinkError }}</p>
             <UButton
-              label="この車両を削除"
+              label="紐づけを解除"
               color="error"
-              variant="ghost"
-              :loading="deleting"
-              @click="onDelete"
+              variant="outline"
+              size="xs"
+              :loading="unlinking"
+              @click="onUnlink"
             />
           </div>
-        </form>
-      </UCard>
 
-      <UCard>
-        <template #header>
-          <h2 class="font-semibold">車検証の紐づけ</h2>
-        </template>
-
-        <div v-if="isVehicleLinked(vehicle)" class="space-y-3">
-          <UBadge color="success" variant="subtle">紐づけ済み</UBadge>
-          <!--
-            ★ 車検証番号 (cert_no) と車検満了日はここに出せない — backend の
-            MaintenanceVehicle が保持していないため (car_id と carins_linked_at
-            だけ)。出すには backend 側の API 追加が要る (別 issue)。
-          -->
-          <dl class="grid grid-cols-2 gap-2 text-sm">
-            <dt class="text-gray-500">車両 ID (car_id)</dt>
-            <dd>{{ vehicle.car_id }}</dd>
-            <dt class="text-gray-500">紐づけ日</dt>
-            <dd>{{ vehicle.carins_linked_at?.slice(0, 10) || '-' }}</dd>
-          </dl>
-          <p v-if="unlinkError" class="text-sm text-red-600">{{ unlinkError }}</p>
-          <UButton
-            label="紐づけを解除"
-            color="error"
-            variant="outline"
-            :loading="unlinking"
-            @click="onUnlink"
-          />
-        </div>
-
-        <div v-else class="space-y-4">
-          <UBadge color="neutral" variant="subtle">未紐づけ</UBadge>
-          <p class="text-sm text-gray-500">
-            車検証が無いテナントや、後から紐づけたい場合はそのままで構いません。
-          </p>
-
-          <UButton
-            label="候補を探す"
-            variant="outline"
-            :loading="candidatesLoading"
-            @click="fetchCandidates"
-          />
-
-          <p v-if="candidatesError" class="text-sm text-red-600">{{ candidatesError }}</p>
-          <p v-if="linkError" class="text-sm text-red-600">{{ linkError }}</p>
-
-          <div v-if="candidatesLoaded" class="space-y-2">
-            <p v-if="candidates.length === 0" class="text-sm text-gray-400">
-              一致する車検証の候補が見つかりませんでした。
+          <div v-else class="space-y-3">
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <UBadge color="neutral" variant="subtle">未紐づけ</UBadge>
+              <UButton
+                label="候補を探す"
+                variant="outline"
+                size="xs"
+                :loading="candidatesLoading"
+                @click="fetchCandidates"
+              />
+            </div>
+            <p class="text-sm text-gray-500">
+              車検証が無いテナントや、後から紐づけたい場合はそのままで構いません。
             </p>
-            <ul v-else class="divide-y divide-gray-100 dark:divide-gray-900">
-              <li
-                v-for="candidate in candidates"
-                :key="candidate.car_id"
-                class="flex items-center justify-between py-2 text-sm"
-              >
-                <div>
-                  <div>{{ candidate.car_no }} ({{ candidate.cert_no }})</div>
-                  <div class="text-xs text-gray-400">車両 ID: {{ candidate.car_id }}</div>
-                </div>
-                <UButton
-                  label="この車検証に紐づける"
-                  size="xs"
-                  :loading="linking"
-                  @click="link({ car_id: candidate.car_id, cert_no: candidate.cert_no })"
-                />
-              </li>
-            </ul>
+
+            <p v-if="candidatesError" class="text-sm text-red-600">{{ candidatesError }}</p>
+            <p v-if="linkError" class="text-sm text-red-600">{{ linkError }}</p>
+
+            <div v-if="candidatesLoaded" class="space-y-2">
+              <p v-if="candidates.length === 0" class="text-sm text-gray-400">
+                一致する車検証の候補が見つかりませんでした。
+              </p>
+              <ul v-else class="divide-y divide-gray-100 dark:divide-gray-900">
+                <li
+                  v-for="candidate in candidates"
+                  :key="candidate.car_id"
+                  class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+                >
+                  <div>
+                    <div>{{ candidate.car_no }} ({{ candidate.cert_no }})</div>
+                    <div class="text-xs text-gray-400">車両 ID: {{ candidate.car_id }}</div>
+                  </div>
+                  <UButton
+                    label="この車検証に紐づける"
+                    size="xs"
+                    :loading="linking"
+                    @click="link({ car_id: candidate.car_id, cert_no: candidate.cert_no })"
+                  />
+                </li>
+              </ul>
+            </div>
           </div>
-        </div>
-      </UCard>
+        </UCard>
+      </div>
 
       <UCard>
         <template #header>
