@@ -1,5 +1,5 @@
 /* v8 ignore start */
-import type { MaintenanceVehicle, CarInsCandidate, MaintenanceCategory, MaintenanceRecord } from '~/types'
+import type { MaintenanceVehicle, CarInsCandidate, MaintenanceCategory, MaintenanceRecord, MaintenanceFile } from '~/types'
 
 export function makeMaintenanceVehicle(overrides: Partial<MaintenanceVehicle> = {}): MaintenanceVehicle {
   return {
@@ -54,6 +54,21 @@ export function makeMaintenanceRecord(overrides: Partial<MaintenanceRecord> = {}
     created_by: null,
     created_at: '2026-01-15T00:00:00',
     updated_at: '2026-01-15T00:00:00',
+    deleted_at: null,
+    ...overrides,
+  }
+}
+
+export function makeMaintenanceFile(overrides: Partial<MaintenanceFile> = {}): MaintenanceFile {
+  return {
+    id: 'file-1',
+    tenant_id: 'tenant-1',
+    record_id: 'record-1',
+    filename: 'photo.jpg',
+    content_type: 'image/jpeg',
+    storage_key: 'tenant-1/record-1/file-1',
+    size_bytes: 12345,
+    created_at: '2026-01-15T00:00:00',
     deleted_at: null,
     ...overrides,
   }

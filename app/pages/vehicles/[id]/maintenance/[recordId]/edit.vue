@@ -129,5 +129,9 @@ function onDelete() {
         </div>
       </form>
     </UCard>
+
+    <UCard v-if="record && !loading">
+      <MaintenanceFiles :record-id="recordId" />
+    </UCard>
   </div>
 </template>

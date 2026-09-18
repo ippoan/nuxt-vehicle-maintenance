@@ -22,9 +22,14 @@ import {
   getMaintenanceRecord,
   updateMaintenanceRecord,
   deleteMaintenanceRecord,
+  getRecordFiles,
+  uploadRecordFile,
+  deleteFile,
+  downloadFile,
+  getFileBlobUrl,
   ApiError,
 } from '~/utils/api'
-import { makeMaintenanceVehicle, makeCarInsCandidate, makeMaintenanceCategory, makeMaintenanceRecord } from '../helpers/test-data'
+import { makeMaintenanceVehicle, makeCarInsCandidate, makeMaintenanceCategory, makeMaintenanceRecord, makeMaintenanceFile } from '../helpers/test-data'
 
 describe('maintenance vehicle API', () => {
   beforeEach(async () => {
@@ -373,6 +378,137 @@ describe('maintenance vehicle API', () => {
       if (isLive) return
       mockFetch.mockResolvedValueOnce(errResponse(404, 'not found'))
       await expect(deleteMaintenanceRecord('missing')).rejects.toMatchObject({ status: 404 })
+    })
+  })
+
+  describe('getRecordFiles', () => {
+    it('fetches file list for a record', async () => {
+      const mockFiles = [makeMaintenanceFile()]
+      const result = await verifyApi(() => getRecordFiles('record-1'), mockFiles)
+      expectMock(result).toEqual(mockFiles)
+      assertMock(() => {
+        expectMock(mockFetch).toHaveBeenCalledWith(
+          `${API_BASE}/api/maintenance/records/record-1/files`,
+          expect.objectContaining({ headers: expect.any(Object) }),
+        )
+      })
+    })
+
+    it('throws ApiError(404) when the record does not belong to the tenant / does not exist', async () => {
+      if (isLive) return
+      mockFetch.mockResolvedValueOnce(errResponse(404, 'not found'))
+      await expect(getRecordFiles('missing')).rejects.toMatchObject({ status: 404 })
+    })
+
+    it('throws ApiError(503) when storage is not configured', async () => {
+      if (isLive) return
+      mockFetch.mockResolvedValueOnce(errResponse(503, 'storage unavailable'))
+      await expect(getRecordFiles('record-1')).rejects.toMatchObject({ status: 503 })
+    })
+  })
+
+  describe('uploadRecordFile', () => {
+    it('uploads a single file as multipart/form-data (no explicit Content-Type)', async () => {
+      if (isLive) return
+      const mockFile = makeMaintenanceFile()
+      stubOk(mockFile)
+      const file = new File(['content'], 'photo.jpg', { type: 'image/jpeg' })
+      const result = await uploadRecordFile('record-1', file)
+      expect(result).toEqual(mockFile)
+      const [url, opts] = mockFetch.mock.calls[0]
+      expect(url).toBe(`${API_BASE}/api/maintenance/records/record-1/files`)
+      expect(opts.method).toBe('POST')
+      expect(opts.body).toBeInstanceOf(FormData)
+      // isFormData 分岐: FormData のときは Content-Type を手で付けない
+      // (fetch がブラウザ側で boundary 付きの値を自動生成する)。
+      expect(opts.headers['Content-Type']).toBeUndefined()
+    })
+
+    it('throws ApiError(404) when the record does not exist', async () => {
+      if (isLive) return
+      mockFetch.mockResolvedValueOnce(errResponse(404, 'not found'))
+      const file = new File(['content'], 'photo.jpg', { type: 'image/jpeg' })
+      await expect(uploadRecordFile('missing', file)).rejects.toMatchObject({ status: 404 })
+    })
+
+    it('throws ApiError(503) when storage is not configured', async () => {
+      if (isLive) return
+      mockFetch.mockResolvedValueOnce(errResponse(503, 'storage unavailable'))
+      const file = new File(['content'], 'photo.jpg', { type: 'image/jpeg' })
+      await expect(uploadRecordFile('record-1', file)).rejects.toMatchObject({ status: 503 })
+    })
+  })
+
+  describe('deleteFile', () => {
+    it('deletes a file (204, no body)', async () => {
+      await verifyApi(() => deleteFile('file-1'), undefined, { expect204: true })
+      assertMock(() => {
+        const [url, opts] = mockFetch.mock.calls[0]
+        expect(url).toBe(`${API_BASE}/api/maintenance/files/file-1`)
+        expect(opts.method).toBe('DELETE')
+      })
+    })
+
+    it('throws ApiError(404) when the file does not exist', async () => {
+      if (isLive) return
+      mockFetch.mockResolvedValueOnce(errResponse(404, 'not found'))
+      await expect(deleteFile('missing')).rejects.toMatchObject({ status: 404 })
+    })
+  })
+
+  describe('downloadFile', () => {
+    it('triggers a file download via a temporary <a> element', async () => {
+      if (isLive) return
+      const blobUrl = 'blob:http://localhost/fake'
+      const clickMock = vi.fn()
+      const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue({
+        href: '', download: '', click: clickMock,
+      } as unknown as HTMLElement)
+      const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue(blobUrl)
+      const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['data'])),
+      })
+      await downloadFile('file-1', 'photo.jpg')
+      const [calledUrl] = mockFetch.mock.calls[0]
+      expect(calledUrl).toBe(`${API_BASE}/api/maintenance/files/file-1/download`)
+      expect(clickMock).toHaveBeenCalled()
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith(blobUrl)
+
+      createElementSpy.mockRestore()
+      createObjectURLSpy.mockRestore()
+      revokeObjectURLSpy.mockRestore()
+    })
+
+    it('throws ApiError on non-ok response', async () => {
+      if (isLive) return
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 404, statusText: 'Not Found' })
+      await expect(downloadFile('file-1', 'photo.jpg')).rejects.toMatchObject({ status: 404 })
+    })
+  })
+
+  describe('getFileBlobUrl', () => {
+    it('returns an object URL for the fetched blob', async () => {
+      if (isLive) return
+      const blobUrl = 'blob:http://localhost/fake'
+      const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue(blobUrl)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['data'])),
+      })
+      const url = await getFileBlobUrl('file-1')
+      expect(url).toBe(blobUrl)
+      const [calledUrl] = mockFetch.mock.calls[0]
+      expect(calledUrl).toBe(`${API_BASE}/api/maintenance/files/file-1/download`)
+      createObjectURLSpy.mockRestore()
+    })
+
+    it('throws ApiError on non-ok response', async () => {
+      if (isLive) return
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 503, statusText: 'Service Unavailable' })
+      await expect(getFileBlobUrl('file-1')).rejects.toMatchObject({ status: 503 })
     })
   })
 

@@ -179,3 +179,19 @@ export interface MaintenanceRecordsResponse {
   page: number
   per_page: number
 }
+
+/**
+ * 整備記録に添付されたファイル (`crates/alc-maintenance/src/models.rs:197-209`)。
+ * 一覧・download は backend 側で `deleted_at IS NULL` により削除済みを除外済み。
+ */
+export interface MaintenanceFile {
+  id: string
+  tenant_id: string
+  record_id: string
+  filename: string
+  content_type: string
+  storage_key: string
+  size_bytes: number
+  created_at: string
+  deleted_at: string | null
+}
