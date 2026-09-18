@@ -20,6 +20,28 @@ describe('default layout', () => {
     expect(wrapper.text()).toContain('content')
   })
 
+  // Refs ippoan/rust-alc-api#666: min-h-screen だとシェルが中身に応じて画面より下へ伸び、
+  // main の overflow-auto が効かずページ全体がビューポートからはみ出す。
+  // happy-dom は実レイアウトを計算しないので、ここで見るのはクラスの付与まで。
+  it('constrains the shell to the viewport so that main scrolls internally', () => {
+    const wrapper = mount(DefaultLayout, { global: { stubs: allStubs }, slots: { default: '<p>content</p>' } })
+
+    const shell = wrapper.element as HTMLElement
+    expect(shell.className).toContain('h-dvh')
+    expect(shell.className).toContain('overflow-hidden')
+    expect(shell.className).not.toContain('min-h-screen')
+
+    // flex の子は既定で内容より小さくなれない。min-h-0 が無いと overflow-auto は効かない。
+    const main = wrapper.find('main')
+    expect(main.classes()).toEqual(expect.arrayContaining(['flex-1', 'min-h-0', 'overflow-auto']))
+  })
+
+  it('keeps the sidebar inside the viewport when the menu grows', () => {
+    const wrapper = mount(DefaultLayout, { global: { stubs: allStubs } })
+    expect(wrapper.find('aside').classes()).toContain('shrink-0')
+    expect(wrapper.find('nav').classes()).toEqual(expect.arrayContaining(['flex-1', 'min-h-0', 'overflow-y-auto']))
+  })
+
   it('renders a tooltip with descriptive text for the nav item', () => {
     const wrapper = mount(DefaultLayout, { global: { stubs: allStubs } })
     const tooltips = wrapper.findAll('[data-tooltip]')
