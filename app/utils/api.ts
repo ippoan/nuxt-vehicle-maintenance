@@ -6,6 +6,13 @@ import type {
   UpdateMaintenanceVehicle,
   CarInsCandidate,
   LinkCarIns,
+  MaintenanceCategory,
+  CreateMaintenanceCategory,
+  MaintenanceRecord,
+  CreateMaintenanceRecord,
+  UpdateMaintenanceRecord,
+  MaintenanceRecordListFilter,
+  MaintenanceRecordsResponse,
 } from '~/types'
 
 let apiBase = ''
@@ -129,4 +136,60 @@ export async function unlinkCarIns(vehicleId: string): Promise<void> {
   await request<void>(`/api/maintenance/vehicles/${encodeURIComponent(vehicleId)}/carins`, {
     method: 'DELETE',
   })
+}
+
+// --- 整備カテゴリ ---
+
+export async function getMaintenanceCategories(): Promise<MaintenanceCategory[]> {
+  return request<MaintenanceCategory[]>('/api/maintenance/categories')
+}
+
+/** 同名で追加すると 409 (呼び出し側で ApiError.status === 409 を見て出し分ける)。 */
+export async function createMaintenanceCategory(data: CreateMaintenanceCategory): Promise<MaintenanceCategory> {
+  return request<MaintenanceCategory>('/api/maintenance/categories', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateMaintenanceCategorySortOrder(id: string, sortOrder: number): Promise<MaintenanceCategory> {
+  return request<MaintenanceCategory>(`/api/maintenance/categories/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ sort_order: sortOrder }),
+  })
+}
+
+export async function deleteMaintenanceCategory(id: string): Promise<void> {
+  await request<void>(`/api/maintenance/categories/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+// --- 整備記録 ---
+
+export async function getMaintenanceRecords(filter: MaintenanceRecordListFilter = {}): Promise<MaintenanceRecordsResponse> {
+  return request<MaintenanceRecordsResponse>(`/api/maintenance/records${toParams(filter)}`)
+}
+
+/** `vehicle_id` / `category_id` が他テナントのものだと 400。 */
+export async function createMaintenanceRecord(data: CreateMaintenanceRecord): Promise<MaintenanceRecord> {
+  return request<MaintenanceRecord>('/api/maintenance/records', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function getMaintenanceRecord(id: string): Promise<MaintenanceRecord> {
+  return request<MaintenanceRecord>(`/api/maintenance/records/${encodeURIComponent(id)}`)
+}
+
+/** `vehicle_id` / `category_id` を変更する場合も他テナントのものだと 400。存在しない id は 404。 */
+export async function updateMaintenanceRecord(id: string, data: UpdateMaintenanceRecord): Promise<MaintenanceRecord> {
+  return request<MaintenanceRecord>(`/api/maintenance/records/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+/** ソフト削除。存在しない (または既に削除済みの) id は 404。 */
+export async function deleteMaintenanceRecord(id: string): Promise<void> {
+  await request<void>(`/api/maintenance/records/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }

@@ -18,6 +18,18 @@ path = "app/composables/useVehicleNew.ts"
 path = "app/composables/useVehicleDetail.ts"
 
 [[files]]
+path = "app/composables/useMaintenanceCategories.ts"
+
+[[files]]
+path = "app/composables/useMaintenanceRecords.ts"
+
+[[files]]
+path = "app/composables/useMaintenanceRecordNew.ts"
+
+[[files]]
+path = "app/composables/useMaintenanceRecordDetail.ts"
+
+[[files]]
 path = "app/middleware/auth.global.ts"
 
 [[files]]

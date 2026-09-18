@@ -12,6 +12,12 @@
  *   3. 特に MaintenanceVehicle.car_id / cert_no / car_inspection_expiry の
  *      実際のフィールド名・null 許容が生成型と一致するか確認する
  *      (紐づけ状態の表現が backend 側で変わっている可能性がある)
+ *
+ * ★ 現状 (#c651-8 時点): records / categories (#654 / #656) は backend
+ * マージ済みで、下記の `MaintenanceRecord*` / `MaintenanceCategory*` は
+ * `crates/alc-maintenance/src/models.rs` の実物を見て手書きした型 (フィールド名・
+ * 型は実物と一致させてある)。写真添付 (files, #651 の一部) がまだマージされて
+ * いないため、生成型への移行はそちらのマージ後にまとめて行う。
  */
 
 /** 車両本体 (整備記録の対象)。車検証への紐づけは任意 (carins が無いテナントでも使える設計)。 */
@@ -82,4 +88,94 @@ export interface CarInsCandidate {
 export interface LinkCarIns {
   cert_no?: string
   car_id?: string
+}
+
+/**
+ * 整備カテゴリ 1 行 (`maintenance_categories`)。初回アクセス時に backend が
+ * テナントごとの既定 5 件 (定期点検・修理・部品交換・タイヤ交換・オイル交換) を
+ * 自動で seed する — フロントで既定値を持たないこと。
+ */
+export interface MaintenanceCategory {
+  id: string
+  tenant_id: string
+  name: string
+  sort_order: number
+  created_at: string
+}
+
+/** `POST /api/maintenance/categories` の body。同名で追加すると 409。 */
+export interface CreateMaintenanceCategory {
+  name: string
+  sort_order?: number
+}
+
+/**
+ * 整備記録 1 行 (`maintenance_records`)。`cost` は `NUMERIC(12,2)` を
+ * backend が `::text` キャストして文字列で返す (`f64` に丸めない作法)。
+ */
+export interface MaintenanceRecord {
+  id: string
+  tenant_id: string
+  vehicle_id: string
+  category_id: string
+  /** 整備実施日 (YYYY-MM-DD) */
+  performed_on: string
+  odometer_km: number | null
+  vendor: string | null
+  description: string | null
+  cost: string | null
+  /** 次回期限 (YYYY-MM-DD) */
+  next_due_on: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+/**
+ * `POST /api/maintenance/records` の body。`vehicle_id` / `category_id` は
+ * 他テナントのものを指定すると 400。
+ */
+export interface CreateMaintenanceRecord {
+  vehicle_id: string
+  category_id: string
+  performed_on: string
+  odometer_km?: number
+  vendor?: string
+  description?: string
+  cost?: number
+  next_due_on?: string
+}
+
+/** `PUT /api/maintenance/records/{id}` の body。`undefined` のフィールドは変更しない (COALESCE 意味論)。 */
+export interface UpdateMaintenanceRecord {
+  vehicle_id?: string
+  category_id?: string
+  performed_on?: string
+  odometer_km?: number
+  vendor?: string
+  description?: string
+  cost?: number
+  next_due_on?: string
+}
+
+/** `GET /api/maintenance/records` のクエリパラメータ。 */
+export interface MaintenanceRecordListFilter {
+  vehicle_id?: string
+  category_id?: string
+  /** `performed_on` に対する範囲検索 (以上、YYYY-MM-DD) */
+  date_from?: string
+  /** `performed_on` に対する範囲検索 (以下、YYYY-MM-DD) */
+  date_to?: string
+  /** `description` / `vendor` の部分一致 */
+  q?: string
+  page?: number
+  per_page?: number
+}
+
+export interface MaintenanceRecordsResponse {
+  records: MaintenanceRecord[]
+  total: number
+  page: number
+  per_page: number
 }
