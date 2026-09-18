@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { isVehicleLinked } from '~/types'
 import { useVehicleDetail } from '~/composables/useVehicleDetail'
+import { useMaintenanceRecords } from '~/composables/useMaintenanceRecords'
 
 const route = useRoute()
 const id = route.params.id as string
@@ -13,6 +14,43 @@ const {
   linking, linkError, link,
   unlinking, unlinkError, unlink,
 } = useVehicleDetail(id)
+
+const {
+  filter: recordsFilter, records, total: recordsTotal, loading: recordsLoading, errorMessage: recordsErrorMessage,
+  fetchRecords, categories: recordCategories, fetchCategories: fetchRecordCategories, categoryName,
+  setPage: setRecordsPage, setCategoryFilter, setDateRange, search: searchRecords,
+} = useMaintenanceRecords(id)
+
+const recordQInput = ref('')
+const categoryFilterValue = ref('')
+const dateFrom = ref('')
+const dateTo = ref('')
+
+const categoryFilterOptions = computed(() => [
+  { label: 'すべてのカテゴリ', value: '' },
+  ...recordCategories.value.map(c => ({ label: c.name, value: c.id })),
+])
+
+const recordTotalPages = computed(() => {
+  const perPage = recordsFilter.per_page || 20
+  return Math.max(1, Math.ceil(recordsTotal.value / perPage))
+})
+
+function onCategoryFilterChange(value: string) {
+  setCategoryFilter(value || undefined)
+}
+
+function onDateRangeChange() {
+  setDateRange(dateFrom.value || undefined, dateTo.value || undefined)
+}
+
+function onRecordSearch() {
+  searchRecords(recordQInput.value)
+}
+
+function goToRecord(recordId: string) {
+  navigateTo(`/vehicles/${id}/maintenance/${recordId}/edit`)
+}
 
 const editForm = reactive({
   registration_number: '',
@@ -27,7 +65,11 @@ watch(vehicle, (v) => {
   editForm.note = v.note || ''
 }, { immediate: true })
 
-onMounted(() => fetchVehicle())
+onMounted(() => {
+  fetchVehicle()
+  fetchRecords()
+  fetchRecordCategories()
+})
 
 function onSave() {
   const registrationNumber = editForm.registration_number.trim()
@@ -162,6 +204,96 @@ function onUnlink() {
                 />
               </li>
             </ul>
+          </div>
+        </div>
+      </UCard>
+
+      <UCard>
+        <template #header>
+          <div class="flex items-center justify-between">
+            <h2 class="font-semibold">整備履歴</h2>
+            <UButton label="記録を追加" icon="i-lucide-plus" size="xs" :to="`/vehicles/${id}/maintenance/new`" />
+          </div>
+        </template>
+
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+          <USelect
+            v-model="categoryFilterValue"
+            :items="categoryFilterOptions"
+            placeholder="カテゴリで絞り込み"
+            class="w-48"
+            @update:model-value="onCategoryFilterChange"
+          />
+          <UInput v-model="dateFrom" type="date" class="w-40" @change="onDateRangeChange" />
+          <span class="text-gray-400">〜</span>
+          <UInput v-model="dateTo" type="date" class="w-40" @change="onDateRangeChange" />
+          <UInput
+            v-model="recordQInput"
+            placeholder="内容・整備工場で検索"
+            icon="i-lucide-search"
+            class="w-56"
+            @keyup.enter="onRecordSearch"
+          />
+          <UButton label="検索" variant="outline" size="xs" @click="onRecordSearch" />
+        </div>
+
+        <p v-if="recordsErrorMessage" class="text-sm text-red-600">{{ recordsErrorMessage }}</p>
+        <p v-if="recordsLoading" class="text-sm text-gray-500">読み込み中...</p>
+
+        <table v-if="!recordsLoading" class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-200 dark:border-gray-800 text-left text-gray-500">
+              <th class="py-2 pr-4">実施日</th>
+              <th class="py-2 pr-4">カテゴリ</th>
+              <th class="py-2 pr-4">内容</th>
+              <th class="py-2 pr-4">整備工場</th>
+              <th class="py-2 pr-4">走行距離</th>
+              <th class="py-2 pr-4">費用</th>
+              <th class="py-2 pr-4">次回期限</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="record in records"
+              :key="record.id"
+              class="border-b border-gray-100 dark:border-gray-900 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900"
+              @click="goToRecord(record.id)"
+            >
+              <td class="py-2 pr-4">{{ record.performed_on }}</td>
+              <td class="py-2 pr-4">{{ categoryName(record.category_id) }}</td>
+              <td class="py-2 pr-4">{{ record.description || '-' }}</td>
+              <td class="py-2 pr-4">{{ record.vendor || '-' }}</td>
+              <td class="py-2 pr-4">{{ record.odometer_km != null ? `${record.odometer_km} km` : '-' }}</td>
+              <td class="py-2 pr-4">{{ record.cost != null ? `¥${record.cost}` : '-' }}</td>
+              <td class="py-2 pr-4">{{ record.next_due_on || '-' }}</td>
+            </tr>
+            <tr v-if="records.length === 0">
+              <td colspan="7" class="py-6 text-center text-gray-400">整備記録がありません</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div v-if="recordTotalPages > 1" class="flex items-center justify-between mt-4 text-sm text-gray-500">
+          <span>
+            {{ recordsTotal }} 件中
+            {{ (recordsFilter.page! - 1) * recordsFilter.per_page! + 1 }}〜{{ Math.min(recordsFilter.page! * recordsFilter.per_page!, recordsTotal) }}
+            件を表示
+          </span>
+          <div class="flex gap-2">
+            <UButton
+              label="前へ"
+              variant="outline"
+              size="xs"
+              :disabled="recordsFilter.page! <= 1"
+              @click="setRecordsPage(recordsFilter.page! - 1)"
+            />
+            <UButton
+              label="次へ"
+              variant="outline"
+              size="xs"
+              :disabled="recordsFilter.page! >= recordTotalPages"
+              @click="setRecordsPage(recordsFilter.page! + 1)"
+            />
           </div>
         </div>
       </UCard>

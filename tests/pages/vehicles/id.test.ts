@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { allStubs } from '../../helpers/nuxt-stubs'
-import { makeMaintenanceVehicle, makeCarInsCandidate } from '../../helpers/test-data'
+import { makeMaintenanceVehicle, makeCarInsCandidate, makeMaintenanceRecord, makeMaintenanceCategory } from '../../helpers/test-data'
 
 const pushMock = vi.fn()
 const getVehicleMock = vi.fn()
@@ -10,6 +10,8 @@ const deleteVehicleMock = vi.fn()
 const getCarInsCandidatesMock = vi.fn()
 const linkCarInsMock = vi.fn()
 const unlinkCarInsMock = vi.fn()
+const getMaintenanceRecordsMock = vi.fn()
+const getMaintenanceCategoriesMock = vi.fn()
 
 vi.mock('#app/composables/router', () => ({
   useRoute: () => ({ params: { id: 'vehicle-1' } }),
@@ -26,6 +28,8 @@ vi.mock('~/utils/api', async (importOriginal) => {
     getCarInsCandidates: (...args: unknown[]) => getCarInsCandidatesMock(...args),
     linkCarIns: (...args: unknown[]) => linkCarInsMock(...args),
     unlinkCarIns: (...args: unknown[]) => unlinkCarInsMock(...args),
+    getMaintenanceRecords: (...args: unknown[]) => getMaintenanceRecordsMock(...args),
+    getMaintenanceCategories: (...args: unknown[]) => getMaintenanceCategoriesMock(...args),
   }
 })
 
@@ -34,6 +38,8 @@ import VehicleDetailPage from '~/pages/vehicles/[id].vue'
 const unlinked = makeMaintenanceVehicle({ id: 'vehicle-1' })
 const linked = makeMaintenanceVehicle({ id: 'vehicle-1', car_id: 'car-1', cert_no: 'CERT-1', car_inspection_expiry: '2027-01-01' })
 const candidate = makeCarInsCandidate()
+const category = makeMaintenanceCategory()
+const record = makeMaintenanceRecord()
 
 describe('vehicles/[id] page (詳細・編集 + 車検証紐づけ)', () => {
   beforeEach(() => {
@@ -44,6 +50,10 @@ describe('vehicles/[id] page (詳細・編集 + 車検証紐づけ)', () => {
     getCarInsCandidatesMock.mockReset()
     linkCarInsMock.mockReset()
     unlinkCarInsMock.mockReset()
+    getMaintenanceRecordsMock.mockReset()
+    getMaintenanceCategoriesMock.mockReset()
+    getMaintenanceRecordsMock.mockResolvedValue({ records: [record], total: 1, page: 1, per_page: 20 })
+    getMaintenanceCategoriesMock.mockResolvedValue([category])
     // happy-dom は window.confirm を実装していないため、直接差し替える。
     window.confirm = vi.fn(() => true)
   })
@@ -139,5 +149,26 @@ describe('vehicles/[id] page (詳細・編集 + 車検証紐づけ)', () => {
     await flushPromises()
     expect(deleteVehicleMock).toHaveBeenCalledWith('vehicle-1')
     expect(pushMock).toHaveBeenCalledWith('/')
+  })
+
+  it('shows the maintenance history for this vehicle only', async () => {
+    getVehicleMock.mockResolvedValue(unlinked)
+    const wrapper = mount(VehicleDetailPage, { global: { stubs: allStubs } })
+    await flushPromises()
+    expect(getMaintenanceRecordsMock).toHaveBeenCalledWith(expect.objectContaining({ vehicle_id: 'vehicle-1' }))
+    expect(wrapper.text()).toContain('整備履歴')
+    expect(wrapper.text()).toContain(record.performed_on)
+    expect(wrapper.text()).toContain(category.name)
+    expect(wrapper.text()).toContain(record.vendor)
+  })
+
+  it('filters maintenance history by category', async () => {
+    getVehicleMock.mockResolvedValue(unlinked)
+    const wrapper = mount(VehicleDetailPage, { global: { stubs: allStubs } })
+    await flushPromises()
+    getMaintenanceRecordsMock.mockClear()
+    await wrapper.find('select').setValue(category.id)
+    await flushPromises()
+    expect(getMaintenanceRecordsMock).toHaveBeenCalledWith(expect.objectContaining({ category_id: category.id }))
   })
 })

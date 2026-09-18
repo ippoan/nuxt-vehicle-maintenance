@@ -26,6 +26,13 @@ export const USwitch = {
   props: ['modelValue', 'size'],
   emits: ['update:modelValue'],
 }
+export const USelect = {
+  template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)">'
+    + '<option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option>'
+    + '</select>',
+  props: ['modelValue', 'items', 'placeholder', 'loading'],
+  emits: ['update:modelValue'],
+}
 export const UTooltip = { template: '<div :data-tooltip="text"><slot /></div>', props: ['text', 'content', 'delayDuration'] }
 export const NuxtLink = { template: '<a :href="to"><slot /></a>', props: ['to'] }
 export const NuxtLayout = { template: '<div><slot /></div>' }
@@ -38,6 +45,6 @@ export const AuthToolbar = {
 
 export const allStubs = {
   UApp, UCard, UButton, UIcon, UBadge, UInput, UFormField,
-  UTextarea, USwitch, UTooltip, NuxtLink, NuxtLayout, NuxtPage,
+  UTextarea, USwitch, USelect, UTooltip, NuxtLink, NuxtLayout, NuxtPage,
   StagingFooter, AuthToolbar,
 }
