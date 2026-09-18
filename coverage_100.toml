@@ -1,0 +1,24 @@
+# Files that must maintain 100% test coverage.
+# CI will fail if any listed file drops below 100%.
+# 形式は org 標準の [[files]] entries (@ippoan/test-utils の checker が読む)。
+
+[[files]]
+path = "app/composables/useAppInit.ts"
+
+[[files]]
+path = "app/composables/useAuth.ts"
+
+[[files]]
+path = "app/composables/useVehicleList.ts"
+
+[[files]]
+path = "app/composables/useVehicleNew.ts"
+
+[[files]]
+path = "app/composables/useVehicleDetail.ts"
+
+[[files]]
+path = "app/middleware/auth.global.ts"
+
+[[files]]
+path = "app/utils/api.ts"

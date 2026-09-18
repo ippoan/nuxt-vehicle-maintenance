@@ -1,0 +1,94 @@
+name = "nuxt-vehicle-maintenance"
+account_id = "24b45709d060d957340180e995f0d373"
+compatibility_date = "2025-03-10"
+compatibility_flags = ["nodejs_compat"]
+main = ".output/server/index.mjs"
+assets = { directory = ".output/public/", binding = "ASSETS" }
+# release tag の `wrangler versions upload` (no-traffic) が version ごとの
+# preview URL (`<hash>-nuxt-vehicle-maintenance.<subdomain>.workers.dev`) を出力するよう
+# opt-in する (auth-worker と同型)。frontend-ci がこの URL を pending-release
+# webhook で ci-dashboard に報告し、/release-wave の Pending releases と
+# preview 環境 (flip 前 E2E) が使う。production traffic は下の custom domain
+# route のままで独立 (Refs ippoan/ci-dashboard#472)。
+preview_urls = true
+
+[[routes]]
+pattern = "maintenance.ippoan.org"
+custom_domain = true
+
+[vars]
+NUXT_PUBLIC_API_BASE = "https://alc-api.ippoan.org"
+NUXT_PUBLIC_AUTH_WORKER_URL = "https://auth.ippoan.org"
+
+# Workers Logs (observability) を有効化。prod / staging 両方に継承される。
+[observability]
+enabled = true
+
+# auth-worker POST /auth/introspect を叩くための共有 secret。/api/proxy/* の
+# forward 前段で browser JWT を introspect 検証し X-Tenant-ID / X-User-* を
+# 注入するために使う。auth-worker / cc-relay / ref-files と同じ CF Secrets
+# Store entry を物理共有する運用 (nuxt-trouble と同型)。
+#
+# ★ TODO(#651): このタスク時点では auth-worker 側にこの consumer の登録
+# (ACL / INTERNAL_SHARED_SECRET の払い出し) がまだ済んでいない。deploy 前に
+# 親が別途手配する。登録が済むまで `wrangler deploy` は打たないこと。
+[[secrets_store_secrets]]
+binding = "INTERNAL_SHARED_SECRET"
+store_id = "bd7bc91a3e5f4111add4acf6cb4b8733"
+secret_name = "INTERNAL_SHARED_SECRET"
+
+# introspect を公開 HTTP ではなく CF service binding (worker-to-worker, 内部) で叩く。
+[[services]]
+binding = "AUTH_WORKER"
+service = "auth-worker"
+
+[env.staging]
+name = "nuxt-vehicle-maintenance-staging"
+
+[[env.staging.routes]]
+pattern = "maintenance-staging.ippoan.org"
+custom_domain = true
+
+[env.staging.vars]
+NUXT_PUBLIC_API_BASE = "https://rust-alc-api-staging-566bls5vfq-an.a.run.app"
+NUXT_PUBLIC_AUTH_WORKER_URL = "https://auth-staging.ippoan.org"
+NUXT_PUBLIC_STAGING_TENANT_ID = ""
+
+# named env は top-level binding を継承しないので再宣言する。
+# staging/prod 統合 entry なので同じ secret_name (auth-worker #189)。
+[[env.staging.secrets_store_secrets]]
+binding = "INTERNAL_SHARED_SECRET"
+store_id = "bd7bc91a3e5f4111add4acf6cb4b8733"
+secret_name = "INTERNAL_SHARED_SECRET"
+
+[[env.staging.services]]
+binding = "AUTH_WORKER"
+service = "auth-worker-staging"
+
+# push のたびに更新される軽量プレビュー環境 (Refs ippoan/secrets-inventory#85)。
+# staging とは別の Worker resource として固定 URL を持たせ、staging 自体は
+# 「PR がある時だけ更新される、DB 変更を伴う本格検証用」の位置づけを保つ。
+# backend は staging のものをそのまま再利用する (専用インフラは持たない)。
+[env.preview]
+name = "nuxt-vehicle-maintenance-preview"
+# custom_domain route を使うため workers.dev URL は明示的に無効化する
+# (routes 定義時は自動的に false 推論されるが、明示して確実にする)。
+workers_dev = false
+
+[[env.preview.routes]]
+pattern = "maintenance-preview.ippoan.org"
+custom_domain = true
+
+[env.preview.vars]
+NUXT_PUBLIC_API_BASE = "https://rust-alc-api-staging-566bls5vfq-an.a.run.app"
+NUXT_PUBLIC_AUTH_WORKER_URL = "https://auth-staging.ippoan.org"
+NUXT_PUBLIC_STAGING_TENANT_ID = ""
+
+[[env.preview.secrets_store_secrets]]
+binding = "INTERNAL_SHARED_SECRET"
+store_id = "bd7bc91a3e5f4111add4acf6cb4b8733"
+secret_name = "INTERNAL_SHARED_SECRET"
+
+[[env.preview.services]]
+binding = "AUTH_WORKER"
+service = "auth-worker-staging"
