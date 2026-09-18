@@ -1,7 +1,13 @@
 /* v8 ignore start */
 export const UApp = { template: '<div><slot /></div>' }
+// 本体 (@nuxt/ui の Card) と同じく root / header / body の 3 層で、`ui` prop の
+// body クラスを body に載せる。レイアウトの assert に data-slot を使えるようにするため。
 export const UCard = {
-  template: '<div><div v-if="$slots.header"><slot name="header" /></div><slot /></div>',
+  props: ['ui'],
+  template: '<div data-slot="root">'
+    + '<div v-if="$slots.header" data-slot="header"><slot name="header" /></div>'
+    + '<div data-slot="body" :class="ui?.body"><slot /></div>'
+    + '</div>',
 }
 export const UButton = {
   template: '<button :disabled="disabled || loading" @click="$emit(\'click\')"><slot>{{ label }}</slot></button>',

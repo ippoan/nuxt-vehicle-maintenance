@@ -28,14 +28,16 @@ const navigation: { label: string; icon: string; to: string; description: string
 </script>
 
 <template>
-  <div class="flex min-h-screen">
+  <div class="flex h-dvh overflow-hidden">
+    <!-- シェルはビューポート高に固定する。min-h-screen だと中身に応じて画面より下へ伸び、
+         main の overflow-auto が効かなくなる (Refs ippoan/rust-alc-api#666) -->
     <!-- Sidebar -->
-    <aside class="w-60 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col">
+    <aside class="w-60 shrink-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col">
       <div class="p-4 border-b border-gray-200 dark:border-gray-800">
         <h1 class="text-lg font-bold">車両整備記録</h1>
       </div>
 
-      <nav class="flex-1 p-2">
+      <nav class="flex-1 min-h-0 overflow-y-auto p-2">
         <UTooltip
           v-for="item in navigation"
           :key="item.to"
@@ -75,7 +77,8 @@ const navigation: { label: string; icon: string; to: string; description: string
     </aside>
 
     <!-- Main content -->
-    <main class="flex-1 p-6 bg-gray-50 dark:bg-gray-950 overflow-auto">
+    <!-- min-h-0 が無いと flex の子は内容より小さくなれず、overflow-auto が効かない -->
+    <main class="flex-1 min-h-0 p-6 bg-gray-50 dark:bg-gray-950 overflow-auto">
       <slot />
     </main>
   </div>

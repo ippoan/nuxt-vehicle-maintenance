@@ -87,4 +87,51 @@ describe('index page (車両一覧)', () => {
     expect(wrapper.text()).toContain('前へ')
     expect(wrapper.text()).toContain('次へ')
   })
+
+  // Refs ippoan/rust-alc-api#666: 本番 (243 件 / 20 行) でページネーションが画面外へ
+  // 押し出された。表の本体だけをスクロールさせ、ページネーションはその外に残す。
+  // happy-dom は実レイアウトを計算しないので、ここで見るのは構造とクラスの付与まで。
+  describe('viewport fit (一覧を main の高さいっぱいに収める)', () => {
+    const page = { items: Array.from({ length: 20 }, (_, i) => makeMaintenanceVehicle({ id: `v${i}`, registration_number: `品川 100 あ ${1000 + i}` })), total: 243, page: 1, per_page: 20 }
+
+    async function mountList() {
+      getVehiclesMock.mockResolvedValue(page)
+      const wrapper = mount(IndexPage, { global: { stubs: allStubs } })
+      await flushPromises()
+      return wrapper
+    }
+
+    it('stretches the list card to the remaining height', async () => {
+      const wrapper = await mountList()
+      const root = wrapper.element as HTMLElement
+      expect(root.className).toEqual(expect.stringContaining('h-full'))
+      expect(root.className).toEqual(expect.stringContaining('flex-col'))
+
+      // 一覧カードは root / body とも残り高さいっぱいに広がり、中身より小さくなれる
+      const body = wrapper.findAll('[data-slot="body"]').at(-1)!
+      expect(body.classes()).toEqual(expect.arrayContaining(['flex-1', 'min-h-0', 'flex', 'flex-col']))
+      expect((body.element.parentElement as HTMLElement).className)
+        .toEqual(expect.stringContaining('flex-1'))
+    })
+
+    it('scrolls only the table body and keeps the header visible', async () => {
+      const wrapper = await mountList()
+      const scroller = wrapper.find('table').element.parentElement as HTMLElement
+      expect(scroller.className).toEqual(expect.stringContaining('overflow-auto'))
+      expect(scroller.className).toEqual(expect.stringContaining('min-h-0'))
+      expect(scroller.className).toEqual(expect.stringContaining('flex-1'))
+
+      expect(wrapper.find('thead').classes()).toEqual(expect.arrayContaining(['sticky', 'top-0']))
+    })
+
+    it('keeps pagination outside the scroll area', async () => {
+      const wrapper = await mountList()
+      const scroller = wrapper.find('table').element.parentElement as HTMLElement
+      const next = wrapper.findAll('button').find(b => b.text() === '次へ')!
+
+      expect(scroller.contains(next.element)).toBe(false)
+      // スクロール領域の兄弟 = カード body の直下にあり、常に見える位置に残る
+      expect(next.element.closest('[data-slot="body"]')).toBe(scroller.parentElement)
+    })
+  })
 })
