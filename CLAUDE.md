@@ -35,9 +35,10 @@ ACL は ippoan origin を素通しする opt-in 方式なので、この repo �
   (`alc-maintenance` crate, #c651-2) がマージされ migrations/147 が 4 テーブルを作るため、
   `tests/fixtures/{init_local_db,seed}.sql` を実 schema に合わせて書いて有効化済み。
 - `ippoan/nuxt-trouble` にあった workflow のうち、**`tag-release.yml` / `release-wave.yml` /
-  `cap-catalog-extract.yml` は入れてある** (`release-wave.yml` は commit `31c6226`
-  (PR #6) で追加)。**`preview-deploy.yml` / `release-wave-retest.yml` / `skills-check.yml` /
-  `ci-shape-report.yml` はまだ入れていない** (org 未登録の設定に依存するため)。
+  `cap-catalog-extract.yml` / `release-wave-retest.yml` は入れてある** (`release-wave.yml` は
+  commit `31c6226` (PR #6)、`release-wave-retest.yml` は Refs #10 で追加)。
+  **`preview-deploy.yml` / `skills-check.yml` / `ci-shape-report.yml` はまだ入れていない**
+  (org 未登録の設定に依存するため)。
   - `ci-shape-report.yml` は `ippoan/ci-workflows` の reusable が
     `secrets.RELEASE_WAVE_WEBHOOK_SECRET` (org secret) で ci-dashboard の
     `/webhooks/ci-shape` に POST する。その org secret のアクセス範囲が
