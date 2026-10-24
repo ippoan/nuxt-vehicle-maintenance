@@ -9,3 +9,6 @@ coverage/
 worker-configuration.d.ts
 .nuxtrc
 .env*
+
+# 結合テストの DB 初期化 SQL は CI が alc-migrations から取る (写しを commit しない)
+tests/fixtures/init_local_db.sql

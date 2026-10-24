@@ -24,7 +24,8 @@ jobs:
       # integration test: docker-compose.test.yml で rust-alc-api (alc-maintenance
       # crate) を立て、tests/integration/ を実 API に対して回す。backend は
       # マージ済みで migrations/147 が 4 テーブルを作るため、
-      # tests/fixtures/{init_local_db,seed}.sql を実 schema に合わせて書いて有効化した。
+      # tests/fixtures/seed.sql を実 schema に合わせて書いて有効化した
+      # (init_local_db.sql は frontend-ci が alc-migrations から取る。写しは持たない)。
       has_integration: true
       # docker-compose.test.yml が ${API_IMAGE:-…:dev} で backend image を読むので、
       # Release Wave compatibility edge を rust-alc-api に対して記録する。
