@@ -5,7 +5,7 @@
 -- (maintenance_vehicles / maintenance_categories / maintenance_records /
 -- maintenance_files の 4 テーブル)。car_inspection は migrations/048。
 --
--- ID は tests/integration/maintenance.live.test.ts と一致させること
+-- ID は tests/helpers/api-test-env.ts と一致させること (整備の口は alc-carins-worker へ移り、live の検証は health だけ。W3)
 -- (テスト側は tests/helpers/api-test-env.ts の TEST_* 定数経由で参照する)。
 --
 -- RLS: 4 テーブルすべてに tenant_isolation policy (147:94-108) が掛かっているが、
