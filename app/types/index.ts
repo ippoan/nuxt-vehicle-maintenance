@@ -1,21 +1,6 @@
 /**
- * backend (rust-alc-api の `alc-maintenance` crate) の ts-rs 生成型が正本。
- * 生成物は `app/types/generated/` に commit してある — 取得は
- * `./scripts/sync-ts-bindings.sh <SHA>`。
- *
- * ★ 渡す SHA に罠がある。artifact 名は `ts-bindings-<SHA>` だが、この <SHA> は
- * **PR の head SHA ではない** — pull_request イベントの `GITHUB_SHA`、つまり
- * **merge commit の SHA** が使われる。PR の head SHA を渡すと
- * `Artifact 'ts-bindings-<sha>' not found` で落ちる。確実なのは
- * `gh api "repos/ippoan/rust-alc-api/actions/artifacts?per_page=100"` で
- * `ts-bindings-` から始まる artifact を実際に一覧し、その名前を渡すこと。
- *
- * ★ `main` への push では artifact が出ない: ts-rs の `export_bindings_*` を
- * 走らせる `test-lib` job が main push では動かないため (ci.yml:88)。
- * pull_request の run か、タグ (`v*`) への push の run を使う。
- *
- * ★ CI で毎回生成する方式は採らない。backend の artifact 取得が CI 経路に増え、
- * backend の CI 失敗がこちらの CI を巻き込むため。
+ * 生成型 (もと backend の `alc-maintenance` crate の ts-rs 出力) は `app/types/generated/` に
+ * commit してある。backend (rust-alc-api) は廃止されたため、以後は同期せずこの repo で保守する。
  *
  * このファイルには次の 2 種類だけを置く:
  *

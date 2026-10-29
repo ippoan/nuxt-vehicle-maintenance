@@ -3,10 +3,7 @@
  * API テスト共通環境
  *
  * API_BASE_URL が設定されていれば実 API (live)、未設定なら mock fetch。
- * live で走らせるのは tests/integration/ 配下だけで、そこは
- * .github/workflows/test.yml の integration_test_command が
- * docker-compose.test.yml の API (alc-maintenance crate) を相手に回す。
- * それ以外の unit テストは常に mock (isLive = false)。
+ * live (API_BASE_URL) を相手にした integration は廃止した。unit テストは常に mock (isLive = false)。
  *
  * ★ live では fetch に X-Tenant-ID を被せる (下の withInjectedIdentity)。
  *   本番では auth-worker がこのヘッダーを注入し、rust-alc-api の
@@ -21,16 +18,15 @@ import { initApi } from '~/utils/api'
 export const isLive = !!process.env.API_BASE_URL
 const API_BASE = process.env.API_BASE_URL || 'https://api.example.com'
 
-// tests/fixtures/seed.sql と一致させること。
 export const TEST_TENANT_ID = '11111111-1111-1111-1111-111111111111'
-/** 車検証 未紐づけ (seed.sql の ...301) */
+/** 車検証 未紐づけ (...301) */
 export const TEST_VEHICLE_UNLINKED_ID = '33333333-3333-3333-3333-333333333301'
-/** 車検証 CAR00000000002 を紐づけ済み (seed.sql の ...302) */
+/** 車検証 CAR00000000002 を紐づけ済み (...302) */
 export const TEST_VEHICLE_LINKED_ID = '33333333-3333-3333-3333-333333333302'
 export const TEST_CATEGORY_ID = '22222222-2222-2222-2222-222222222201'
 export const TEST_RECORD_ID = '44444444-4444-4444-4444-444444444401'
 /**
- * TEST_VEHICLE_UNLINKED_ID の登録番号に一致する車検証 (seed.sql)。
+ * TEST_VEHICLE_UNLINKED_ID の登録番号に一致する車検証。
  * 形は normalize_carins_numbers の検査に合わせる — cert_no は 12〜13 桁の数字、
  * car_id は 14 文字の英数字。外れた値は照合前に 400 で弾かれる。
  */
