@@ -31,12 +31,9 @@ Secrets Store entry で default / staging / preview すべてに bind 済み (�
 ACL は ippoan origin を素通しする opt-in 方式なので、この repo 個別の登録も不要だった。
 
 - `.github/workflows/test.yml` は `has_deploy: true` になっている ([test.yml:52](.github/workflows/test.yml)、上記の理由で有効化済み)。
-- `.github/workflows/test.yml` は `has_integration: true` になっている ([test.yml:28](.github/workflows/test.yml))。backend
-  (`alc-maintenance` crate, #c651-2) がマージされ migrations/147 が 4 テーブルを作るため、
-  `tests/fixtures/{init_local_db,seed}.sql` を実 schema に合わせて書いて有効化済み。
 - `ippoan/nuxt-trouble` にあった workflow のうち、**`tag-release.yml` / `release-wave.yml` /
-  `cap-catalog-extract.yml` / `release-wave-retest.yml` は入れてある** (`release-wave.yml` は
-  commit `31c6226` (PR #6)、`release-wave-retest.yml` は Refs #10 で追加)。
+  `cap-catalog-extract.yml` は入れてある** (`release-wave.yml` は
+  commit `31c6226` (PR #6))。
   **`preview-deploy.yml` / `skills-check.yml` / `ci-shape-report.yml` はまだ入れていない**
   (org 未登録の設定に依存するため)。
   - `ci-shape-report.yml` は `ippoan/ci-workflows` の reusable が
@@ -52,19 +49,11 @@ ACL は ippoan origin を素通しする opt-in 方式なので、この repo �
   の空き番の実測)。TODO(#c651-12) — 登録 PR がまだ入っておらず未登録なので
   `ci/Dev Proxy Validate` はまだ通らない (登録され次第、値の一致を確認すること)。
 
-## 型 — ★ TODO(#c651-2 マージ後)
+## 型
 
-backend は ts-rs で型を出力し `app/types/generated/` に同期する運用 (nuxt-trouble と同型)。
-`alc-maintenance` crate 本体 (#c651-2) がまだマージされていないため、**`app/types/index.ts`
-は手書きの型で暫定している**。マージ後にやること:
-
-1. `app/types/generated/` に生成型を配置する CI 導線を用意する
-2. `app/types/index.ts` の手書き型を実際の生成型に差し替える
-3. 特に `MaintenanceVehicle.car_id` / `cert_no` / `car_inspection_expiry` の
-   フィールド名・null 許容が生成型と一致するか確認する (紐づけ状態の表現が
-   backend 側の実装で変わっている可能性がある)
-4. `CarInsCandidate.matched_by` の実際の値集合 (`registration_number` /
-   `cert_no` / `none` としているのは issue 本文からの推測) を確認する
+`app/types/generated/` の ts-rs 生成型は commit 済みで、backend (rust-alc-api) 廃止後はこの repo で保守する
+(同期 script `scripts/sync-ts-bindings.sh` は廃止)。`app/types/index.ts` は生成型の re-export と、
+生成型をそのまま使えない箇所の override だけを置く。
 
 ## ドメインモデル上の注意
 

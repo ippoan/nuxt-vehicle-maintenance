@@ -1,2 +1,2 @@
-# TODO(#c651-2 マージ後): scripts/sync-ts-bindings.sh でここに ts-rs 生成型を展開する。
-# それまでは空 (app/types/index.ts の手書き型を使う。CLAUDE.md 参照)。
+# ts-rs 由来の生成型は commit 済み。backend (rust-alc-api) は廃止されたため、以後はこの repo で手で保守する。
+# (sync-ts-bindings.sh による同期は廃止。app/types/index.ts と CLAUDE.md 参照)

@@ -21,28 +21,6 @@ jobs:
   ci:
     uses: ippoan/ci-workflows/.github/workflows/frontend-ci.yml@main
     with:
-      # integration test: docker-compose.test.yml で rust-alc-api (alc-maintenance
-      # crate) を立て、tests/integration/ を実 API に対して回す。backend は
-      # マージ済みで migrations/147 が 4 テーブルを作るため、
-      # tests/fixtures/seed.sql を実 schema に合わせて書いて有効化した
-      # (init_local_db.sql は frontend-ci が alc-migrations から取る。写しは持たない)。
-      has_integration: true
-      # docker-compose.test.yml が ${API_IMAGE:-…:dev} で backend image を読むので、
-      # Release Wave compatibility edge を rust-alc-api に対して記録する。
-      # has_integration: true でこれが未設定だと integration-test job は loud fail
-      # する (グラフから silent に漏れるのを防ぐ設計)。image_env は「記録した SHA と
-      # 同じ image で test した」ことを担保するため必須。
-      compat_backend_repo: ippoan/rust-alc-api
-      compat_backend_image_env: API_IMAGE
-      integration_compose_file: docker-compose.test.yml
-      # unit テスト (mock) と混ぜず live だけを回す。tests/integration/ 以外は
-      # API_BASE_URL が立っていても mock のままなので、ここで対象を絞る。
-      integration_test_command: 'npx vitest run tests/integration'
-      # API_BASE_URL が tests/helpers/api-test-env.ts の isLive を立てる。
-      # TEST_LIVE=1 は「live のつもりなのに API_BASE_URL が無い」を
-      # tests/integration/backend-health.live.test.ts が読み込み時に落とすための目印
-      # (env 欠落で丸ごと skip され、検証ゼロのまま緑になるのを防ぐ)。
-      integration_env: 'TEST_LIVE=1 API_BASE_URL=http://localhost:18080'
       # deploy: auth-worker 側の前提は実測で確認済み (2026-09-18) —
       # KV origins:prod に https://maintenance.ippoan.org、origins:staging に
       # maintenance-staging / maintenance-preview が実在。INTERNAL_SHARED_SECRET は
