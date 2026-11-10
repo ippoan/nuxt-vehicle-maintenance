@@ -21,6 +21,9 @@ jobs:
   ci:
     uses: ippoan/ci-workflows/.github/workflows/frontend-ci.yml@main
     with:
+      # staging deploy 後に、この frontend が実際に呼ぶ staging の CF Worker の SHA を tested として
+      # ci-dashboard に報告する (Refs ippoan/ci-dashboard#520)。呼ぶ証拠のある worker だけを並べる。
+      compat_staging_backends: 'ippoan/alc-carins-worker'
       # deploy: auth-worker 側の前提は実測で確認済み (2026-09-18) —
       # KV origins:prod に https://maintenance.ippoan.org、origins:staging に
       # maintenance-staging / maintenance-preview が実在。INTERNAL_SHARED_SECRET は
